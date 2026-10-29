@@ -12,6 +12,7 @@ import { readSnapshot, updateSnapshot, type Snapshot } from "@/lib/storage";
 import { POST as researchPost } from "./research/route";
 import { POST as tradePost } from "./trades/route";
 import { POST as syncPost } from "./sync/route";
+import { GET as privatePortfolio } from "./blue/portfolio/route";
 
 vi.mock("@/lib/storage", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/storage")>()),
@@ -261,5 +262,36 @@ describe("settlement synchronization", () => {
     ]);
     expect(snapshot.lastSyncAt).toBeNull();
     expect(snapshot.ledger.trades[0].status).toBe("open");
+  });
+});
+
+describe("authenticated portfolio", () => {
+  it.each([undefined, "incorrect-credential"])(
+    "rejects missing/incorrect credentials before storage: %s",
+    async (key) => {
+      const response = await privatePortfolio(
+        new Request("https://simulator.example/api/blue/portfolio", {
+          headers: key ? { Authorization: `Bearer ${key}` } : {},
+        }),
+      );
+      expect(response.status).toBe(401);
+      expect(readSnapshot).not.toHaveBeenCalled();
+    },
+  );
+  it("returns a live uncached portfolio with the correct credential", async () => {
+    vi.stubEnv("SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-only-server-key");
+    const response = await privatePortfolio(
+      new Request("https://simulator.example/api/blue/portfolio", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({
+      mode: "live",
+      cashCents: 10000000,
+    });
+    expect(readSnapshot).toHaveBeenCalledTimes(1);
   });
 });

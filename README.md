@@ -29,8 +29,8 @@ Set `BLUE_API_KEY` in `.env.local` to a randomly generated secret of at least 32
 
 ```sh
 npm run dev
-npm run blue -- health
-npm run blue -- status
+npm run blue:local -- health
+npm run blue:local -- status
 ```
 
 Use `NODE_USE_ENV_PROXY=1 npm run dev` with Node 24 in a managed cloud environment that provides an HTTP(S) proxy. Preserve its CA trust and proxy variables; never disable TLS verification. The frontend requires no network-loaded fonts or assets.
@@ -69,6 +69,7 @@ Blue also needs `BLUE_BASE_URL` pointing to the deployed site and the same `BLUE
 | Method | Path                                 | Access          | Purpose                                                 |
 | ------ | ------------------------------------ | --------------- | ------------------------------------------------------- |
 | GET    | `/api/health`                        | Public          | Storage and connection configuration status             |
+| GET    | `/api/blue/portfolio`                | Blue bearer key | Authenticated portfolio for the CLI                     |
 | GET    | `/api/portfolio`                     | Public          | Dashboard projection                                    |
 | GET    | `/api/ledger`                        | Public          | Transactions, quote snapshots, settlements, sync errors |
 | GET    | `/api/markets?cursor=...&series=...` | Blue bearer key | One page of public Kalshi markets                       |
