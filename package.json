@@ -10,10 +10,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:init": "node --env-file-if-exists=.env.local scripts/init-db.mjs",
-    "blue": "node --env-file-if-exists=.env.local scripts/blue.mjs",
+    "blue": "node scripts/blue.mjs",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "blue:local": "node --env-file=.env.local scripts/blue.mjs --local"
   },
   "dependencies": {
     "next": "16.4.3",

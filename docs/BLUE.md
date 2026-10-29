@@ -14,7 +14,7 @@ Blue coordinates research and decides when to request simulated trades. The webs
 
 ## Each scheduled or on-demand run
 
-1. Read public `GET /api/portfolio` and, when useful, `GET /api/ledger`. Inspect cash, exposure, unsettled positions, data freshness, and recent activity. Reconcile supported market updates and finalized outcomes with authenticated `POST /api/sync`, continuing through all `nextCursor` pages as described below. Investigate returned errors even when HTTP status is 200; never assume a failed or partial sync completed.
+1. Read authenticated `GET /api/blue/portfolio` and, when useful, `GET /api/ledger`. Inspect cash, exposure, unsettled positions, data freshness, and recent activity. Reconcile supported market updates and finalized outcomes with authenticated `POST /api/sync`, continuing through all `nextCursor` pages as described below. Investigate returned errors even when HTTP status is 200; never assume a failed or partial sync completed.
 2. Scan authenticated `GET /api/markets`, following returned `nextCursor` values with `?cursor=...` within the run's time budget. The scan requests open markets in batches of 100 and excludes multivariate event markets; trading supports standard $1 binary contracts. Use authenticated `GET /api/markets/:ticker` to retrieve a candidate's current market rules and quote. Record the actual coverage and observation time. Do not describe a partial scan as reviewing all Kalshi markets. Skip markets whose rules or executable quote cannot be verified.
 3. Shortlist a small number of researchable markets. Prefer clear resolution rules, usable liquidity, good public evidence, and a time horizon appropriate for the next planned review. Avoid allocating expensive research equally across all markets. Revisit open positions when material new evidence appears.
 4. For each candidate, inspect the exact contract and settlement conditions. Identify the designated resolution source, cutoff time and timezone, inclusivity of numeric boundaries, postponement or cancellation handling, and any distinction between the title and formal rules. Quote or summarize the operative rule in the research record. If ambiguity could change the outcome, pass pending clarification.
@@ -89,25 +89,56 @@ Generate a stable idempotency key for each logical operation. Retry the **same p
 
 ## Connect Blue and run the CLI
 
-Use Node.js 22 or later and this repository's `npm run blue -- ...` command. The CLI loads an existing local `.env.local` when present; it also accepts injected process environment variables. Keep local secret files ignored by Git. Production database credentials belong only in the project's server environment, not in Blue's client environment.
+Use Node.js 24 in the managed cloud environment. `npm run blue -- ...` reads **only injected process variables**. It does not load `.env.local`, `.local/blue-production.env`, or any other credential file, and it has no localhost fallback. A published filesystem snapshot is not a secret-delivery mechanism.
 
-After the deployment hostname is verified, configure these values securely:
+### Secure connection setup
 
-- `BLUE_BASE_URL`: the project's HTTPS origin, intended to be `https://kalshi.mattvildibill.com`. The default is `http://localhost:3000` for local development. Set it explicitly for a deployed run. The CLI rejects non-HTTPS external URLs and redirects.
-- `BLUE_API_KEY`: the same private bearer token configured in the project's server environment, at least 32 characters. Supply it through Blue's secret mechanism or an ignored local environment file; never paste it into a task prompt or commit it. It is a runtime credential for this application, not a Kalshi key.
+In the **kalshi-agentic-simulator cloud environment settings → Environment variables**, configure:
 
-The health, portfolio, and ledger commands are public. Every other command, including market reads, requires the bearer token. The CLI exits nonzero for HTTP failures; successful sync responses still require inspection of `errors` and `complete`.
+- `BLUE_BASE_URL`: `https://kalshi.mattvildibill.com` (non-secret).
+- `BLUE_API_KEY`: a secure environment-variable binding containing the same random bearer token as this project's Vercel **Production** `BLUE_API_KEY`. Use at least 32 random characters. This authenticates access to the simulator; it is not an AI-provider or Kalshi credential.
+
+Enter the credential only in the secure settings UI. Never put it in chat, task prompts, source, shell arguments, setup scripts, or logs. The environment configuration tool can declare the requirement but cannot enter its secret value. Save the settings and **publish the environment** so new tasks receive the binding. Existing tasks may need a runtime refresh; readiness must be checked, not assumed. A Git checkout by itself supplies no credential.
+
+For initial setup or rotation, generate a new value in a password manager and save it in the secure cloud binding. A maintainer can then update only this project's Vercel Production variable from that injected value in process memory and redeploy. Alternatively, enter the same value directly in both secure provider settings and redeploy. Never promote the local development key. Do not resume Blue until verification succeeds. Routine Blue runs need neither Vercel administrator access nor Supabase credentials.
+
+The CLI pins production calls to this exact HTTPS origin and rejects redirects. `status` now uses the authenticated `/api/blue/portfolio` endpoint. The website's `/api/portfolio` remains public; a successful public read does not verify the credential. Only `health` and `ledger` are public CLI commands.
+
+### Verify in a genuinely fresh task
+
+After the binding is published and the matching production key is deployed, launch a **new Codex cloud task** through Blue using this environment. A child agent, subprocess, or new checkout within the setup task does not establish fresh-task delivery.
+
+1. Read the cloud runtime skill and inspect environment status. Require current, ready observations for `BLUE_API_KEY` and `BLUE_BASE_URL`. Check presence only; never print values. If either binding is missing, stop and report the precise secure setting needed. Do not search old workspaces for a key.
+2. Use the existing project checkout containing these CLI changes. Check `git rev-parse HEAD`; update the clean checkout from `origin/main` if its snapshot predates the fix. Preserve local changes.
+3. Run the documented command below with inherited proxy and CA settings. No production server or local database needs to start:
 
 ```bash
 cd /workspace/kalshi-agentic-simulator
-export BLUE_BASE_URL="https://kalshi.mattvildibill.com"
-npm run blue -- health
-npm run blue -- status
-npm run blue -- ledger
-npm run blue -- scan
+git rev-parse HEAD
+NODE_USE_ENV_PROXY=1 npm run blue -- verify
 ```
 
-These commands are a handoff procedure, not evidence the production hostname is already live. Proceed only when health reports `status: "ready"`, `database: true`, and `blueConfigured: true`. Then verify authenticated market access with `scan`. Health does not prove market access or a scheduled Blue run.
+`verify` checks application health, proves the private portfolio endpoint rejects a missing credential, reads the portfolio with the injected credential, synchronizes all pages, and rereads the authenticated portfolio to confirm the final sync timestamp persisted. It exits nonzero on HTTP/authentication failure, sync errors, invalid or incomplete results, or missing persistence. Repeated cursors are valid run IDs. Verification is bounded to 1,000 pages / approximately 10 minutes plus an in-flight request. A newer persisted timestamp is accepted if another sync completed concurrently.
+
+Verification can update marks and settle existing **paper** positions; it creates no research or purchases and never sends real orders. An empty portfolio still exercises an authenticated persisted sync but does not prove live quote/settlement coverage.
+
+4. Return the new task's actual link/identifier, repository SHA, runtime binding readiness, and sanitized verification JSON. The CLI cannot itself prove task freshness; its success in the setup workspace is insufficient. Do not claim the handoff verified until this independent task's result has been observed. A scheduled Blue run requires separate evidence.
+
+**Current handoff status:** the file-based procedure was defective and has been replaced. Secure binding publication, matching production credential, and a genuinely fresh task's verification must be confirmed before marking this handoff complete.
+
+### Research commands
+
+Once verification passes, use the same injected environment:
+
+```bash
+NODE_USE_ENV_PROXY=1 npm run blue -- status
+NODE_USE_ENV_PROXY=1 npm run blue -- scan
+NODE_USE_ENV_PROXY=1 npm run blue -- sync
+```
+
+For all commands in this playbook, preserve the managed environment's proxy/CA settings (`NODE_USE_ENV_PROXY=1` on Node 24). Missing credentials fail closed. HTTP failures exit nonzero; inspect the response for every research/trade. For `sync`, a valid continuation page is not completion: continue its cursor, or use `verify` to complete the entire sync with persistence checks.
+
+Local development is separate: `npm run blue:local -- status` explicitly loads `.env.local` and permits only a loopback HTTP origin. Do not use that command or a local key for production. An injected production origin will be rejected in local mode; use a separate development process with development-only variables.
 
 For subsequent scan pages, pass the exact returned `nextCursor` as the positional argument to `npm run blue -- scan "$market_cursor"`. Stop when it is null or the run's research budget is exhausted. A scan's `complete` describes pagination exhaustion, not exhaustive research or coverage of excluded market types. Quote a real candidate with `npm run blue -- quote "$ticker"`; the response contains `{market, quote}`. Do not fabricate a ticker when live data is unavailable.
 
