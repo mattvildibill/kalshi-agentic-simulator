@@ -96,6 +96,21 @@ After the deployment hostname is verified, configure these values securely:
 - `BLUE_BASE_URL`: the project's HTTPS origin, intended to be `https://kalshi.mattvildibill.com`. The default is `http://localhost:3000` for local development. Set it explicitly for a deployed run. The CLI rejects non-HTTPS external URLs and redirects.
 - `BLUE_API_KEY`: the same private bearer token configured in the project's server environment, at least 32 characters. Supply it through Blue's secret mechanism or an ignored local environment file; never paste it into a task prompt or commit it. It is a runtime credential for this application, not a Kalshi key.
 
+### Prepared cloud environment
+
+The deployed site is `https://kalshi.mattvildibill.com`. In the prepared `kalshi-agentic-simulator` cloud environment, an ignored, owner-only `.local/blue-production.env` file holds the client connection. It contains no database administrator credential. Do not print, copy into prompts, or commit its contents.
+
+From `/workspace/kalshi-agentic-simulator`, use the production client explicitly:
+
+```bash
+NODE_USE_ENV_PROXY=1 node --env-file=.local/blue-production.env scripts/blue.mjs health
+NODE_USE_ENV_PROXY=1 node --env-file=.local/blue-production.env scripts/blue.mjs status
+NODE_USE_ENV_PROXY=1 node --env-file=.local/blue-production.env scripts/blue.mjs scan
+NODE_USE_ENV_PROXY=1 node --env-file=.local/blue-production.env scripts/blue.mjs sync
+```
+
+Use the same prefix for `quote`, `research`, and `trade`. This connection file must be available in the selected cloud environment; a fresh Git checkout alone does not include it. If it is absent, obtain a secure binding rather than silently using the local development key or asking for a key in chat. Published cloud snapshots retain files, not live server processes. An actual scheduled Dot run remains a separate verification step.
+
 The health, portfolio, and ledger commands are public. Every other command, including market reads, requires the bearer token. The CLI exits nonzero for HTTP failures; successful sync responses still require inspection of `errors` and `complete`.
 
 ```bash
