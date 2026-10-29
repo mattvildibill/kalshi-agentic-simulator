@@ -1,0 +1,36 @@
+{
+  "name": "kalshi-agentic-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:init": "node --env-file-if-exists=.env.local scripts/init-db.mjs",
+    "blue": "node --env-file-if-exists=.env.local scripts/blue.mjs",
+    "test:e2e": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.0",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

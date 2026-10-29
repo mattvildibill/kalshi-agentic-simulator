@@ -1,0 +1,54 @@
+export type DashboardResearch = {
+  id: string;
+  ticker: string;
+  title: string;
+  category: string;
+  side: "yes" | "no";
+  probability: number;
+  probabilityLow: number;
+  probabilityHigh: number;
+  thesis: string;
+  counterThesis: string;
+  rationale: string;
+  resolutionCriteria: string;
+  sources: { url: string; title: string }[];
+  evidenceAsOf: string;
+  createdAt: string;
+  decision: "trade" | "watch" | "pass";
+};
+export type DashboardPosition = {
+  id: string;
+  researchId: string;
+  ticker: string;
+  title: string;
+  side: "yes" | "no";
+  quantity: number;
+  priceCents: number;
+  feeCents: number;
+  costCents: number;
+  status: "open" | "settled";
+  payoutCents: number | null;
+  profitCents: number | null;
+  createdAt: string;
+  settledAt: string | null;
+};
+export type DashboardData = {
+  mode: "live" | "local" | "unconfigured" | "unavailable" | "demo";
+  initialCashCents: number;
+  cashCents: number;
+  committedCents: number;
+  realizedProfitCents: number;
+  openPositions: number;
+  settledPositions: number;
+  winRate: number | null;
+  lastActivityAt: string | null;
+  lastSyncAt: string | null;
+  research: DashboardResearch[];
+  positions: DashboardPosition[];
+  activity: {
+    id: string;
+    type: string;
+    description: string;
+    createdAt: string;
+  }[];
+};
