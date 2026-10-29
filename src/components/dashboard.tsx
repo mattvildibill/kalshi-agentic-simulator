@@ -411,7 +411,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                 <strong>Portfolio data is temporarily unavailable.</strong>
                 <span>
                   Balances and activity are hidden until the ledger can be read.
-                  This does not mean the portfolio was reset.
                 </span>
               </div>
             </div>
@@ -440,6 +439,9 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           </section>
           <div className="portfolio-freshness">
             <Icon name="clock" />
+            {data.run && !demo && (
+              <span>Started {date(data.run.startedAt, true)}</span>
+            )}
             <span>
               Last settlement check:{" "}
               {unavailable ? "Unavailable" : date(data.lastSyncAt, true)}
@@ -538,8 +540,9 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                 <div className="position-grid">
                   {positions.map((position) => (
                     <PositionCard
-                      key={position.id}
+                      key={`${data.run?.id ?? "initial-run"}:${position.id}`}
                       position={position}
+                      runId={data.run?.id}
                       demo={demo}
                       research={data.research.find(
                         (r) =>

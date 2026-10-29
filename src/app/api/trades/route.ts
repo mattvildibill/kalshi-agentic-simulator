@@ -1,3 +1,4 @@
+import { requireActiveRun, assertRun } from "@/lib/runs";
 import { executeTrade } from "@/lib/engine";
 import {
   requireBlue,
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
     requireBlue(request);
     const input = await parseBody(request, tradeSchema);
     const snapshot = await readSnapshot();
+    const runId = requireActiveRun(request, snapshot);
     const existing = snapshot.ledger.trades.find(
       (t) => t.idempotencyKey === input.idempotencyKey,
     );
@@ -24,6 +26,7 @@ export async function POST(request: Request) {
     }
     const { quote } = await getQuote(input.ticker);
     const result = await updateSnapshot((current) => {
+      assertRun(current, runId);
       const { state, trade, replayed } = executeTrade(
         current.ledger,
         input,

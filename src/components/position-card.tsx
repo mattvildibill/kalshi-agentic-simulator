@@ -28,11 +28,13 @@ export function PositionCard({
   research,
   initialCashCents,
   demo = false,
+  runId,
 }: {
   position: DashboardPosition;
   research?: DashboardResearch;
   initialCashCents: number;
   demo?: boolean;
+  runId?: string;
 }) {
   const settled = p.status === "settled";
   const fullPayout = p.quantity * 100;
@@ -90,7 +92,7 @@ export function PositionCard({
           market rules. This is not a cash-out value.
         </p>
       )}
-      <PositionTiming position={p} demo={demo} />
+      <PositionTiming position={p} demo={demo} runId={runId} />
       {research ? (
         <>
           <div className="bet-forecast">

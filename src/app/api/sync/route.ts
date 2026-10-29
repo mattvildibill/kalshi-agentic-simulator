@@ -1,3 +1,4 @@
+import { requireActiveRun, assertRun } from "@/lib/runs";
 import {
   timingFromMarket,
   newerTiming,
@@ -11,16 +12,18 @@ import {
 } from "@/lib/engine";
 import { requireBlue, response, failure, HttpError } from "@/lib/http";
 import { getMarket, getQuote, settlementFromMarket } from "@/lib/kalshi";
-import { updateSnapshot } from "@/lib/storage";
+import { readSnapshot, updateSnapshot } from "@/lib/storage";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     requireBlue(request);
+    const activeId = requireActiveRun(request, await readSnapshot());
     const cursor = new URL(request.url).searchParams.get("cursor");
     // The opaque cursor identifies a persisted run, not a caller-chosen offset.
     const runId = randomUUID();
     const work = await updateSnapshot((snapshot) => {
+      assertRun(snapshot, activeId);
       if (cursor && snapshot.syncRun?.id !== cursor)
         throw new HttpError(
           409,
@@ -90,6 +93,7 @@ export async function POST(request: Request) {
       );
     }
     const result = await updateSnapshot((snapshot) => {
+      assertRun(snapshot, activeId);
       if (snapshot.syncRun?.id !== work.id)
         throw new HttpError(
           409,

@@ -9,20 +9,24 @@ type TimingResponse = {
   error?: string;
 };
 const pending = new Map<string, Promise<TimingResponse>>();
-function refresh(ticker: string) {
-  const existing = pending.get(ticker);
+function refresh(ticker: string, runId?: string) {
+  const key = `${runId}:${ticker}`;
+  const existing = pending.get(key);
   if (existing) return existing;
-  const request = fetch(`/api/positions/${encodeURIComponent(ticker)}/timing`, {
-    signal: AbortSignal.timeout(15000),
-  })
+  const request = fetch(
+    `/api/positions/${encodeURIComponent(ticker)}/timing${runId ? `?runId=${encodeURIComponent(runId)}` : ""}`,
+    {
+      signal: AbortSignal.timeout(15000),
+    },
+  )
     .then(async (res) => {
       const body = await res.json();
       if (!body || typeof body.stale !== "boolean")
         throw new Error("Schedule unavailable");
       return body as TimingResponse;
     })
-    .finally(() => pending.delete(ticker));
-  pending.set(ticker, request);
+    .finally(() => pending.delete(key));
+  pending.set(key, request);
   return request;
 }
 export function formatSchedule(
@@ -44,9 +48,11 @@ export function formatSchedule(
 export function PositionTiming({
   position: p,
   demo = false,
+  runId,
 }: {
   position: DashboardPosition;
   demo?: boolean;
+  runId?: string;
 }) {
   const [timing, setTiming] = useState(p.marketTiming);
   const [error, setError] = useState(false);
@@ -70,7 +76,7 @@ export function PositionTiming({
       return;
     }
     setLoading(true);
-    refresh(p.ticker)
+    refresh(p.ticker, runId)
       .then((result) => {
         if (!active) return;
         if (result.timing) setTiming(result.timing);
@@ -89,7 +95,7 @@ export function PositionTiming({
     return () => {
       active = false;
     };
-  }, [p.ticker, p.marketTiming, demo]);
+  }, [p.ticker, p.marketTiming, demo, runId]);
   const format = (value?: string | null) => formatSchedule(value, timezone);
   const unavailable = !timing;
   return (

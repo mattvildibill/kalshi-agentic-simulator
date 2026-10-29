@@ -213,3 +213,21 @@ describe("Blue production client", () => {
     await expect(result).rejects.not.toThrow("Do not dump");
   });
 });
+
+it("pins writes to the explicitly selected run without adding it to reads", async () => {
+  const fetcher = vi
+    .fn()
+    .mockImplementation(
+      async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+  const request = client(
+    { origin: productionOrigin, key: "test-only-key", runId: "run-selected" },
+    fetcher,
+  );
+  await request("/api/research", { method: "POST" });
+  expect(fetcher.mock.calls[0][1].headers["X-Blue-Run-Id"]).toBe(
+    "run-selected",
+  );
+  await request("/api/blue/portfolio");
+  expect(fetcher.mock.calls[1][1].headers["X-Blue-Run-Id"]).toBeUndefined();
+});

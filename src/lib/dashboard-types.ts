@@ -38,6 +38,7 @@ export type DashboardPosition = {
   settlementResult?: "yes" | "no" | "scalar" | null;
 };
 export type DashboardData = {
+  run?: { id: string; startedAt: string; archivedAt?: string };
   mode: "live" | "local" | "unconfigured" | "unavailable" | "demo";
   initialCashCents: number;
   cashCents: number;

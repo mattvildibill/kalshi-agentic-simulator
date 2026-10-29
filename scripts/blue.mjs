@@ -10,6 +10,9 @@ const paths = {
   status: "/api/blue/portfolio",
   scan: "/api/markets",
   research: "/api/research",
+  reset: "/api/runs/reset",
+  runs: "/api/runs",
+  archive: "/api/runs/",
   trade: "/api/trades",
   sync: "/api/sync",
   health: "/api/health",
@@ -25,18 +28,18 @@ try {
   } else {
     if (!Object.hasOwn(paths, command))
       throw new Error(
-        "Usage: npm run blue -- verify|status|scan [cursor]|quote <ticker>|research <json-file>|trade <json-file>|sync [cursor]|health|ledger",
+        "Usage: npm run blue -- verify|status|scan [cursor]|quote <ticker>|research <json-file>|trade <json-file>|reset <json-file>|runs|archive <run-id>|sync [cursor]|health|ledger",
       );
     let path = paths[command];
-    if (command === "quote") {
+    if (["quote", "archive"].includes(command)) {
       if (!argument || !/^[A-Za-z0-9_.-]{1,200}$/.test(argument))
-        throw new Error("quote requires a valid ticker");
+        throw new Error("quote/archive requires a valid identifier");
       path += encodeURIComponent(argument);
     }
     if (["scan", "sync"].includes(command) && argument)
       path += `?${new URLSearchParams({ cursor: argument })}`;
     const options = { authenticated: !["health", "ledger"].includes(command) };
-    if (["research", "trade"].includes(command)) {
+    if (["research", "trade", "reset"].includes(command)) {
       if (!argument) throw new Error(`${command} requires a JSON file`);
       try {
         options.body = await readFile(argument, "utf8");
