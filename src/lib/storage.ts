@@ -1,3 +1,4 @@
+import type { MarketTiming } from "./market-timing";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -12,6 +13,8 @@ export interface Snapshot {
   lastSyncAt: string | null;
   lastSyncErrors: { ticker: string; message: string }[];
   marks: Record<string, MarketQuote>;
+  marketTimings?: Record<string, MarketTiming>;
+  marketTimingRetryAfter?: Record<string, string>;
   syncRun?: { id: string; pendingTickers: string[]; startedAt: string } | null;
 }
 export class StorageError extends Error {

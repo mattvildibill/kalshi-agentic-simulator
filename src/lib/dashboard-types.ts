@@ -1,3 +1,4 @@
+import type { MarketTiming } from "./market-timing";
 export type DashboardResearch = {
   id: string;
   ticker: string;
@@ -33,6 +34,7 @@ export type DashboardPosition = {
   settledAt: string | null;
   closesAt?: string | null;
   timingAsOf?: string | null;
+  marketTiming?: MarketTiming;
   settlementResult?: "yes" | "no" | "scalar" | null;
 };
 export type DashboardData = {

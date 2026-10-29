@@ -1,3 +1,4 @@
+import type { MarketTiming } from "./market-timing";
 /** Paper-only accounting. All money is integer cents; probabilities describe the selected side. */
 export type Side = "yes" | "no";
 export type Decision = "trade" | "watch" | "pass";
@@ -44,6 +45,7 @@ export interface MarketQuote {
   status: "open" | "closed" | "settled";
   observedAt: string;
   closesAt?: string;
+  marketTiming?: MarketTiming;
   sourceUrl?: string;
   rulesPrimary?: string;
   rulesSecondary?: string;

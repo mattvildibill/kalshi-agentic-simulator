@@ -1,3 +1,8 @@
+import {
+  timingFromMarket,
+  newerTiming,
+  type MarketTiming,
+} from "@/lib/market-timing";
 import { randomUUID } from "node:crypto";
 import {
   settleMarket,
@@ -45,6 +50,7 @@ export async function POST(request: Request) {
     const results: {
       ticker: string;
       quote?: MarketQuote;
+      timing?: MarketTiming;
       settlement?: SettlementInput;
       error?: string;
     }[] = [];
@@ -53,19 +59,26 @@ export async function POST(request: Request) {
       results.push(
         ...(await Promise.all(
           work.batch.slice(offset, offset + 5).map(async (ticker) => {
+            let timing: MarketTiming | undefined;
             try {
               const market = await getMarket(ticker);
+              timing = timingFromMarket(market, new Date().toISOString());
               const settlement = settlementFromMarket(
                 market,
                 new Date().toISOString(),
               );
-              if (settlement) return { ticker, settlement };
+              if (settlement) return { ticker, timing, settlement };
               if (market.status === "active" || market.status === "open")
-                return { ticker, quote: (await getQuote(ticker)).quote };
-              return { ticker };
+                return {
+                  ticker,
+                  timing,
+                  quote: (await getQuote(ticker)).quote,
+                };
+              return { ticker, timing };
             } catch (error) {
               return {
                 ticker,
+                timing,
                 error:
                   error instanceof Error
                     ? error.message
@@ -85,11 +98,17 @@ export async function POST(request: Request) {
         );
       let ledger = snapshot.ledger;
       const marks = { ...snapshot.marks };
+      const marketTimings = { ...snapshot.marketTimings };
       const errors = snapshot.lastSyncErrors.filter(
         (e) => !work.batch.includes(e.ticker),
       );
       let settled = 0;
       for (const item of results) {
+        if (item.timing)
+          marketTimings[item.ticker] = newerTiming(
+            marketTimings[item.ticker],
+            item.timing,
+          );
         if (item.error) {
           errors.push({ ticker: item.ticker, message: item.error });
           continue;
@@ -129,6 +148,7 @@ export async function POST(request: Request) {
           ...snapshot,
           ledger,
           marks,
+          marketTimings,
           lastSyncErrors: errors,
           lastSyncAt: complete ? now : snapshot.lastSyncAt,
           syncRun: remaining.length

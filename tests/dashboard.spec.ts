@@ -96,7 +96,7 @@ test("position cards separate stake, gross return and profit", async ({
   await expect(card.getByText("$1,000.00", { exact: true })).toBeVisible();
   await expect(card.getByText("$552.84", { exact: true })).toBeVisible();
   await expect(
-    card.getByText("Expected result", { exact: true }),
+    card.getByText("Expected result · estimate", { exact: true }),
   ).toBeVisible();
   await card
     .getByText("Reasoning, sizing & market rules", { exact: true })
@@ -113,4 +113,26 @@ test("position cards separate stake, gross return and profit", async ({
   await expect(
     page.locator(".position-card").getByText("$373.34", { exact: true }),
   ).toBeVisible();
+});
+
+test("schedule shows local timezone with UTC toggle without fetching demo markets", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    timezoneId: "America/Los_Angeles",
+  });
+  const page = await context.newPage();
+  const requests: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/positions/")) requests.push(r.url());
+  });
+  await page.goto("http://127.0.0.1:3000/demo");
+  const timing = page.locator(".position-timing").first();
+  await expect(timing.getByText("Times: America/Los_Angeles")).toBeVisible();
+  await expect(timing).toContainText("PDT");
+  await timing.getByRole("button", { name: "Use UTC" }).click();
+  await expect(timing.getByText("Times: UTC")).toBeVisible();
+  await expect(timing).toContainText("Oct 25, 2026, 2:00 PM UTC");
+  expect(requests).toEqual([]);
+  await context.close();
 });

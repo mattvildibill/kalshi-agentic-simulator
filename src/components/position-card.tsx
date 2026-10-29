@@ -1,3 +1,4 @@
+import { PositionTiming } from "./position-timing";
 import type {
   DashboardPosition,
   DashboardResearch,
@@ -26,10 +27,12 @@ export function PositionCard({
   position: p,
   research,
   initialCashCents,
+  demo = false,
 }: {
   position: DashboardPosition;
   research?: DashboardResearch;
   initialCashCents: number;
+  demo?: boolean;
 }) {
   const settled = p.status === "settled";
   const fullPayout = p.quantity * 100;
@@ -87,35 +90,7 @@ export function PositionCard({
           market rules. This is not a cash-out value.
         </p>
       )}
-      <dl className="bet-timing">
-        {settled ? (
-          <div>
-            <dt>Settlement recorded</dt>
-            <dd>{date(p.settledAt)}</dd>
-          </div>
-        ) : (
-          <>
-            <div>
-              <dt>Trading closes · recorded schedule</dt>
-              <dd>{date(p.closesAt)}</dd>
-            </div>
-            <div>
-              <dt>Expected result</dt>
-              <dd>Not recorded</dd>
-            </div>
-            <div>
-              <dt>Settlement deadline</dt>
-              <dd>Not recorded</dd>
-            </div>
-          </>
-        )}
-      </dl>
-      {!settled && (
-        <p className="bet-note">
-          Trading close is not the result time. Funds return only after official
-          settlement is recorded. Check the market rules below.
-        </p>
-      )}
+      <PositionTiming position={p} demo={demo} />
       {research ? (
         <>
           <div className="bet-forecast">

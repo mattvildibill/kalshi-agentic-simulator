@@ -1,3 +1,4 @@
+import { newerTiming } from "./market-timing";
 import type { DashboardData } from "./dashboard-types";
 import { createInitialState } from "./engine";
 import { readSnapshot, storageMode, type Snapshot } from "./storage";
@@ -65,6 +66,12 @@ export function projectDashboard(
               : _quote;
           return {
             ...t,
+            marketTiming: observedQuote.marketTiming
+              ? newerTiming(
+                  snapshot.marketTimings?.[t.ticker],
+                  observedQuote.marketTiming,
+                )
+              : snapshot.marketTimings?.[t.ticker],
             closesAt: observedQuote?.closesAt ?? null,
             timingAsOf: observedQuote?.observedAt ?? null,
             settlementResult:
