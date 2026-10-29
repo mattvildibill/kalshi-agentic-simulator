@@ -53,7 +53,7 @@ describe("position presentation", () => {
   });
   it("does not turn missing timing or settlement accounting into zero", () => {
     expect(render(position)).toContain("Expected result");
-    expect(render(position)).toContain("Not recorded");
+    expect(render(position)).toContain("Schedule unavailable");
     expect(render({ ...position, status: "settled" })).not.toContain("$0.00");
   });
 });

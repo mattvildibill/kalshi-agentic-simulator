@@ -1,3 +1,4 @@
+import { timingFromMarket } from "./market-timing";
 import { z } from "zod";
 import type { MarketQuote, SettlementInput } from "./engine";
 
@@ -225,6 +226,7 @@ export function quoteFromData(
           : "closed",
     observedAt,
     closesAt: market.close_time,
+    marketTiming: timingFromMarket(market, observedAt),
     sourceUrl: `${KALSHI_BASE_URL}/markets/${encodeURIComponent(market.ticker)}/orderbook`,
     rulesPrimary: market.rules_primary,
     rulesSecondary: market.rules_secondary,

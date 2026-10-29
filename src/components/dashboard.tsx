@@ -540,6 +540,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                     <PositionCard
                       key={position.id}
                       position={position}
+                      demo={demo}
                       research={data.research.find(
                         (r) =>
                           r.id === position.researchId &&

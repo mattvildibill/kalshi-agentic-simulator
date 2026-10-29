@@ -1215,3 +1215,29 @@ td strong {
     text-align: left;
   }
 }
+.timing-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 16px;
+}
+.timing-controls button {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-height: 36px;
+  padding: 6px 10px;
+  color: var(--blue);
+}
+.position-timing a {
+  color: var(--blue);
+  text-decoration: underline;
+}
+.timing-error {
+  font-size: 12px;
+  color: #845514;
+  margin-top: 8px;
+}

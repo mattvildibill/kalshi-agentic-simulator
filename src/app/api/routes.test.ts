@@ -1,3 +1,5 @@
+import { GET as positionTiming } from "./positions/[ticker]/timing/route";
+import { timingFromMarket } from "@/lib/market-timing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addResearch,
@@ -293,5 +295,88 @@ describe("authenticated portfolio", () => {
       cashCents: 10000000,
     });
     expect(readSnapshot).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("public held-position schedule cache", () => {
+  const getTiming = (ticker = quote.ticker) =>
+    positionTiming(
+      new Request("https://simulator.example/api/positions/timing"),
+      { params: Promise.resolve({ ticker }) },
+    );
+  it("rejects unheld tickers before upstream requests or writes", async () => {
+    expect((await getTiming()).status).toBe(404);
+    expect(getMarket).not.toHaveBeenCalled();
+    expect(updateSnapshot).not.toHaveBeenCalled();
+  });
+  it("returns fresh cache without writes or upstream reads", async () => {
+    openPosition();
+    snapshot.marketTimings = {
+      [quote.ticker]: timingFromMarket(market(), now),
+    };
+    expect((await getTiming()).status).toBe(200);
+    expect(getMarket).not.toHaveBeenCalled();
+    expect(updateSnapshot).not.toHaveBeenCalled();
+  });
+  it("persists timing without touching ledger, marks or sync state; deduplicates simultaneous reads", async () => {
+    openPosition();
+    const original = structuredClone(snapshot);
+    vi.mocked(getMarket).mockResolvedValue(
+      market({
+        expected_expiration_time: "2026-10-29T04:00:00Z",
+        latest_expiration_time: "2026-11-01T00:00:00Z",
+      }),
+    );
+    const responses = await Promise.all([getTiming(), getTiming()]);
+    expect(responses.map((r) => r.status)).toEqual([200, 200]);
+    expect(getMarket).toHaveBeenCalledTimes(1);
+    expect(snapshot.ledger).toEqual(original.ledger);
+    expect(snapshot.marks).toEqual(original.marks);
+    expect(snapshot.lastSyncAt).toEqual(original.lastSyncAt);
+    expect(snapshot.marketTimings?.[quote.ticker].expectedResultAt).toBe(
+      "2026-10-29T04:00:00.000Z",
+    );
+  });
+  it("preserves a newer concurrent observation and concurrent ledger updates", async () => {
+    openPosition();
+    const newer = timingFromMarket(
+      market({ expected_expiration_time: "2026-10-31T00:00:00Z" }),
+      "2026-10-28T12:00:01.000Z",
+    );
+    vi.mocked(getMarket).mockImplementationOnce(async () => {
+      snapshot.marketTimings = { [quote.ticker]: newer };
+      snapshot.lastSyncAt = "concurrent-sync";
+      return market();
+    });
+    await getTiming();
+    expect(snapshot.marketTimings?.[quote.ticker]).toEqual(newer);
+    expect(snapshot.lastSyncAt).toBe("concurrent-sync");
+  });
+  it("keeps stale evidence on failure and backs off retries", async () => {
+    openPosition();
+    const stale = timingFromMarket(market(), "2026-10-27T00:00:00Z");
+    snapshot.marketTimings = { [quote.ticker]: stale };
+    vi.mocked(getMarket).mockRejectedValue(new Error("upstream failure"));
+    const result = await (await getTiming()).json();
+    expect(result.stale).toBe(true);
+    expect(result.timing).toEqual(stale);
+    await getTiming();
+    expect(getMarket).toHaveBeenCalledTimes(1);
+    expect(snapshot.marketTimings?.[quote.ticker]).toEqual(stale);
+  });
+  it("sync records closed-market timing without settling the position", async () => {
+    openPosition();
+    vi.mocked(getMarket).mockResolvedValue(
+      market({
+        status: "closed",
+        expected_expiration_time: "2026-10-29T04:00:00Z",
+      }),
+    );
+    const before = structuredClone(snapshot.ledger);
+    await syncPost(request("/api/sync"));
+    expect(snapshot.ledger).toEqual(before);
+    expect(snapshot.marketTimings?.[quote.ticker].expectedResultAt).toBe(
+      "2026-10-29T04:00:00.000Z",
+    );
   });
 });
