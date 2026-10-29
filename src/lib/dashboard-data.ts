@@ -54,7 +54,24 @@ export function projectDashboard(
           idempotencyKey: _key,
           quote: _quote,
           ...t
-        }) => t,
+        }) => {
+          const mark = snapshot.marks[t.ticker];
+          const observedQuote =
+            mark &&
+            Number.isFinite(Date.parse(mark.observedAt)) &&
+            (!Number.isFinite(Date.parse(_quote.observedAt)) ||
+              Date.parse(mark.observedAt) > Date.parse(_quote.observedAt))
+              ? mark
+              : _quote;
+          return {
+            ...t,
+            closesAt: observedQuote?.closesAt ?? null,
+            timingAsOf: observedQuote?.observedAt ?? null,
+            settlementResult:
+              state.settlements.find((s) => s.ticker === t.ticker)?.result ??
+              null,
+          };
+        },
       ),
     activity: activity.slice(0, 30),
   };

@@ -47,10 +47,12 @@ test("research filters, evidence expansion, and settlement history work", async 
   ).toHaveAttribute("href", "https://www.bls.gov/cpi/");
   await page.getByRole("button", { name: "Settled 1", exact: true }).click();
   await expect(
-    page.getByRole("columnheader", { name: "Realized P&L" }),
+    page.getByText("Net profit / loss", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("cell", { name: /Will the central bank hold rates/ }),
+    page
+      .locator(".position-card")
+      .getByRole("heading", { name: /Will the central bank hold rates/ }),
   ).toBeVisible();
   expect(errors).toEqual([]);
   const overflow = await page.evaluate(
@@ -83,4 +85,32 @@ test("empty search can be reset and research is keyboard accessible", async ({
   await expect(card.getByText("Close analysis")).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(card).toHaveAttribute("aria-expanded", "false");
+});
+
+test("position cards separate stake, gross return and profit", async ({
+  page,
+}) => {
+  await page.goto("/demo");
+  const card = page.locator(".position-card").first();
+  await expect(card.getByText("$447.16", { exact: true })).toBeVisible();
+  await expect(card.getByText("$1,000.00", { exact: true })).toBeVisible();
+  await expect(card.getByText("$552.84", { exact: true })).toBeVisible();
+  await expect(
+    card.getByText("Expected result", { exact: true }),
+  ).toBeVisible();
+  await card
+    .getByText("Reasoning, sizing & market rules", { exact: true })
+    .click();
+  await expect(
+    card.getByText("Counterarguments & uncertainty", { exact: true }),
+  ).toBeVisible();
+  await card.getByText("Original research record", { exact: true }).click();
+  await expect(card.locator("pre")).toContainText("DEMO-INFLATION");
+  await page.getByRole("button", { name: "Settled 1", exact: true }).click();
+  await expect(
+    page.locator(".position-card").getByText("Won", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".position-card").getByText("$373.34", { exact: true }),
+  ).toBeVisible();
 });
