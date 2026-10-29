@@ -8,7 +8,7 @@ import {
   type MarketQuote,
 } from "./engine";
 
-export interface Snapshot {
+export interface RunSnapshot {
   ledger: LedgerState;
   lastSyncAt: string | null;
   lastSyncErrors: { ticker: string; message: string }[];
@@ -16,6 +16,29 @@ export interface Snapshot {
   marketTimings?: Record<string, MarketTiming>;
   marketTimingRetryAfter?: Record<string, string>;
   syncRun?: { id: string; pendingTickers: string[]; startedAt: string } | null;
+}
+export interface RunIdentity {
+  id: string;
+  startedAt: string;
+}
+export interface ArchivedRun extends RunIdentity {
+  archivedAt: string;
+  snapshot: RunSnapshot;
+  digest: string;
+}
+export interface ResetReceipt {
+  idempotencyKey: string;
+  expectedRunId: string;
+  reason: string;
+  archivedRunId: string;
+  activeRunId: string;
+  resetAt: string;
+  archiveDigest: string;
+}
+export interface Snapshot extends RunSnapshot {
+  activeRun?: RunIdentity;
+  archives?: ArchivedRun[];
+  resetReceipts?: ResetReceipt[];
 }
 export class StorageError extends Error {
   constructor(
@@ -106,7 +129,15 @@ function checkSnapshot(snapshot: Snapshot): Snapshot {
     !Array.isArray(snapshot.ledger.research) ||
     !Array.isArray(snapshot.ledger.transactions) ||
     !Array.isArray(snapshot.ledger.settlements) ||
-    !Number.isSafeInteger(snapshot.ledger.cashCents)
+    !Number.isSafeInteger(snapshot.ledger.cashCents) ||
+    (snapshot.activeRun !== undefined &&
+      (!snapshot.activeRun.id ||
+        !Number.isFinite(Date.parse(snapshot.activeRun.startedAt)))) ||
+    (snapshot.archives !== undefined &&
+      (!Array.isArray(snapshot.archives) ||
+        (snapshot.archives.length > 0 && !snapshot.activeRun))) ||
+    (snapshot.resetReceipts !== undefined &&
+      !Array.isArray(snapshot.resetReceipts))
   ) {
     throw new StorageError(
       "INVALID_STORED_DATA",

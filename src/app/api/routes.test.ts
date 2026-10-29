@@ -1,3 +1,6 @@
+import { POST as resetPost } from "./runs/reset/route";
+import { GET as archiveExport } from "./runs/[id]/route";
+import { resetRun, runDigest } from "@/lib/runs";
 import { GET as positionTiming } from "./positions/[ticker]/timing/route";
 import { timingFromMarket } from "@/lib/market-timing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -378,5 +381,165 @@ describe("public held-position schedule cache", () => {
     expect(snapshot.marketTimings?.[quote.ticker].expectedResultAt).toBe(
       "2026-10-29T04:00:00.000Z",
     );
+  });
+});
+
+describe("recoverable portfolio run lifecycle", () => {
+  const resetInput = {
+    idempotencyKey: "reset-test-one",
+    expectedRunId: "initial-run",
+    reason: "Fresh paper run; preserve originals",
+  };
+  const withRun = (req: Request, id: string) => {
+    req.headers.set("X-Blue-Run-Id", id);
+    return req;
+  };
+  it("requires authentication before archival or reset", async () => {
+    const result = await resetPost(
+      request("/api/runs/reset", resetInput, false),
+    );
+    expect(result.status).toBe(401);
+    expect(updateSnapshot).not.toHaveBeenCalled();
+  });
+  it("archives all original content and starts exactly100k with no history carried over", async () => {
+    openPosition();
+    snapshot.syncRun = {
+      id: "old-sync",
+      pendingTickers: [quote.ticker],
+      startedAt: now,
+    };
+    snapshot.marks[quote.ticker] = quote;
+    const before = structuredClone(snapshot);
+    const result = await resetPost(request("/api/runs/reset", resetInput));
+    expect(result.status).toBe(201);
+    const receipt = (await result.json()).receipt;
+    expect(snapshot.archives?.[0].snapshot).toEqual(before);
+    expect(runDigest(snapshot.archives![0].snapshot)).toBe(
+      receipt.archiveDigest,
+    );
+    expect(snapshot.ledger.cashCents).toBe(10000000);
+    expect(snapshot.ledger.trades).toEqual([]);
+    expect(snapshot.ledger.research).toEqual([]);
+    expect(snapshot.ledger.settlements).toEqual([]);
+    expect(snapshot.ledger.transactions).toHaveLength(1);
+    expect(snapshot.syncRun).toBeUndefined();
+    expect(snapshot.marks).toEqual({});
+    expect(snapshot.lastSyncAt).toBeNull();
+    const replay = await resetPost(request("/api/runs/reset", resetInput));
+    expect(replay.status).toBe(200);
+    expect((await replay.json()).receipt).toEqual(receipt);
+    expect(snapshot.archives).toHaveLength(1);
+    expect(
+      (
+        await resetPost(
+          request("/api/runs/reset", { ...resetInput, reason: "different" }),
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await resetPost(
+          request("/api/runs/reset", {
+            ...resetInput,
+            idempotencyKey: "reset-other",
+          }),
+        )
+      ).status,
+    ).toBe(409);
+  });
+  it("rejects missing/old run headers and old research after reset, preserving frozen archive", async () => {
+    openPosition();
+    await resetPost(request("/api/runs/reset", resetInput));
+    const frozen = structuredClone(snapshot.archives);
+    expect(
+      (await researchPost(request("/api/research", research))).status,
+    ).toBe(409);
+    expect(
+      (await tradePost(withRun(request("/api/trades", trade), "initial-run")))
+        .status,
+    ).toBe(409);
+    expect((await syncPost(request("/api/sync"))).status).toBe(409);
+    const id = snapshot.activeRun!.id;
+    expect(
+      (await tradePost(withRun(request("/api/trades", trade), id))).status,
+    ).not.toBe(201);
+    expect(
+      (await researchPost(withRun(request("/api/research", research), id)))
+        .status,
+    ).toBe(201);
+    expect(snapshot.archives).toEqual(frozen);
+    expect(snapshot.ledger.trades).toEqual([]);
+  });
+  it("cannot apply an in-flight old trade after the reset", async () => {
+    vi.mocked(getQuote).mockImplementationOnce(async () => {
+      snapshot = resetRun(snapshot, resetInput, "run-new", now).snapshot;
+      return { market: market(), quote };
+    });
+    const result = await tradePost(request("/api/trades", trade));
+    expect(result.status).toBe(409);
+    expect(snapshot.ledger.cashCents).toBe(10000000);
+    expect(snapshot.ledger.trades).toEqual([]);
+  });
+  it("cannot settle or mark old unsettled positions into the new run", async () => {
+    openPosition();
+    vi.mocked(getMarket).mockImplementationOnce(async () => {
+      snapshot = resetRun(snapshot, resetInput, "run-new", now).snapshot;
+      return market({ status: "finalized", result: "yes" });
+    });
+    const result = await syncPost(request("/api/sync"));
+    expect(result.status).toBe(409);
+    expect(snapshot.ledger.cashCents).toBe(10000000);
+    expect(snapshot.ledger.settlements).toEqual([]);
+    expect(snapshot.marks).toEqual({});
+    expect(snapshot.archives![0].snapshot.ledger.trades[0].status).toBe("open");
+  });
+  it("preserves prior archives across another reset and exports originals with auth", async () => {
+    openPosition();
+    await resetPost(request("/api/runs/reset", resetInput));
+    const first = structuredClone(snapshot.archives![0]);
+    await resetPost(
+      request("/api/runs/reset", {
+        ...resetInput,
+        idempotencyKey: "reset-second",
+        expectedRunId: snapshot.activeRun!.id,
+      }),
+    );
+    expect(snapshot.archives).toHaveLength(2);
+    expect(snapshot.archives![0]).toEqual(first);
+    expect(
+      (
+        await archiveExport(
+          request("/api/runs/initial-run", undefined, false),
+          { params: Promise.resolve({ id: "initial-run" }) },
+        )
+      ).status,
+    ).toBe(401);
+    const exported = await archiveExport(request("/api/runs/initial-run"), {
+      params: Promise.resolve({ id: "initial-run" }),
+    });
+    expect(await exported.json()).toEqual(first);
+  });
+  it("rejects an old sync cursor and timing cache refresh after run change", async () => {
+    openPosition();
+    snapshot.syncRun = {
+      id: "old-sync",
+      pendingTickers: [quote.ticker],
+      startedAt: now,
+    };
+    await resetPost(request("/api/runs/reset", resetInput));
+    expect(
+      (
+        await syncPost(
+          withRun(request("/api/sync?cursor=old-sync"), snapshot.activeRun!.id),
+        )
+      ).status,
+    ).toBe(409);
+    const result = await positionTiming(
+      new Request(
+        "https://simulator.example/api/positions/timing?runId=initial-run",
+      ),
+      { params: Promise.resolve({ ticker: quote.ticker }) },
+    );
+    expect(result.status).toBe(409);
   });
 });

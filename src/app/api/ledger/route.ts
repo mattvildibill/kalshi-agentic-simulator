@@ -1,3 +1,4 @@
+import { activeRun } from "@/lib/runs";
 import { response, failure } from "@/lib/http";
 import { readSnapshot } from "@/lib/storage";
 export const runtime = "nodejs";
@@ -5,6 +6,7 @@ export async function GET() {
   try {
     const snapshot = await readSnapshot();
     return response({
+      run: activeRun(snapshot),
       transactions: snapshot.ledger.transactions,
       settlements: snapshot.ledger.settlements,
       trades: snapshot.ledger.trades.map(

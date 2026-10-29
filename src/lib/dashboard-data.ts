@@ -1,3 +1,4 @@
+import { activeRun } from "./runs";
 import { newerTiming } from "./market-timing";
 import type { DashboardData } from "./dashboard-types";
 import { createInitialState } from "./engine";
@@ -28,6 +29,7 @@ export function projectDashboard(
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return {
     mode,
+    run: activeRun(snapshot),
     initialCashCents: state.initialCashCents,
     cashCents: state.cashCents,
     committedCents: open.reduce((sum, t) => sum + t.costCents, 0),

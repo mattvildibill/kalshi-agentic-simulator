@@ -24,7 +24,12 @@ export function connection(env, local = false) {
     throw new Error(
       "BLUE_BASE_URL must be the project's production origin (or explicit --local loopback origin).",
     );
-  return { origin: url.origin, key: env.BLUE_API_KEY, local };
+  return {
+    origin: url.origin,
+    key: env.BLUE_API_KEY,
+    local,
+    ...(env.BLUE_RUN_ID ? { runId: env.BLUE_RUN_ID } : {}),
+  };
 }
 
 export function client(config, fetcher = fetch) {
@@ -35,6 +40,7 @@ export function client(config, fetcher = fetch) {
       body,
       authenticated = true,
       expectUnauthorized = false,
+      runId = config.runId,
     } = {},
   ) {
     if (authenticated && !config.key)
@@ -52,6 +58,7 @@ export function client(config, fetcher = fetch) {
       );
     const headers = { Accept: "application/json" };
     if (authenticated) headers.Authorization = `Bearer ${config.key}`;
+    if (method !== "GET" && runId) headers["X-Blue-Run-Id"] = runId;
     if (body !== undefined) headers["Content-Type"] = "application/json";
     let response;
     try {
@@ -132,7 +139,10 @@ export async function verify(config, fetcher = fetch) {
   for (let page = 1; page <= 1000 && Date.now() < deadline; page++) {
     const path = new URL("/api/sync", config.origin);
     if (cursor) path.searchParams.set("cursor", cursor);
-    const sync = await request(path.pathname + path.search, { method: "POST" });
+    const sync = await request(path.pathname + path.search, {
+      method: "POST",
+      runId: before.run?.id,
+    });
     if (
       !Array.isArray(sync.errors) ||
       sync.errors.length ||
@@ -152,6 +162,7 @@ export async function verify(config, fetcher = fetch) {
       const persisted = Date.parse(after.lastSyncAt);
       if (
         after.mode !== mode ||
+        after.run?.id !== before.run?.id ||
         !Number.isFinite(observed) ||
         !Number.isFinite(persisted) ||
         persisted < observed
