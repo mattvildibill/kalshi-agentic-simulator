@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ResearchText } from "./research-text";
+import { PositionCard } from "./position-card";
 import type { DashboardData, DashboardResearch } from "@/lib/dashboard-types";
 
 type IconName =
@@ -180,22 +182,26 @@ function ResearchCard({
         <div className="research-detail" id={detailId}>
           <div className="detail-column thesis-column">
             <span className="eyebrow">The case</span>
-            <p>{item.thesis}</p>
+            <ResearchText text={item.thesis} />
           </div>
           <div className="detail-column">
             <span className="eyebrow">The counterargument</span>
-            <p>{item.counterThesis}</p>
+            <ResearchText text={item.counterThesis} />
           </div>
           <div className="detail-column">
-            <span className="eyebrow">Decision rationale</span>
-            <p>{item.rationale}</p>
+            <span className="eyebrow">Sizing & review conditions</span>
+            <ResearchText text={item.rationale} />
           </div>
           <div className="detail-column">
             <span className="eyebrow">Settlement criteria</span>
-            <p>{item.resolutionCriteria}</p>
+            <ResearchText text={item.resolutionCriteria} />
           </div>
           <div className="detail-sources">
-            <span className="eyebrow">Evidence & sources</span>
+            <span className="eyebrow">Sources & evidence</span>
+            <p className="evidence-time">
+              Source quality is not scored. Check publisher, date, and direct
+              support for each claim; source count is not confidence.
+            </p>
             <div className="source-list">
               {item.sources.map((source, index) => {
                 const href = safeSource(source.url);
@@ -221,6 +227,10 @@ function ResearchCard({
               Evidence as of {date(item.evidenceAsOf, true)}. Range reflects
               uncertainty in the selected-side estimate.
             </p>
+            <details className="technical-details">
+              <summary>Original research record</summary>
+              <pre>{JSON.stringify(item, null, 2)}</pre>
+            </details>
           </div>
         </div>
       )}
@@ -494,6 +504,81 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           </section>
 
           <section
+            className="positions-section"
+            id="positions"
+            aria-labelledby="positions-title"
+          >
+            <div className="section-heading">
+              <div>
+                <h2 id="positions-title">Paper positions</h2>
+              </div>
+              <div
+                className="position-tabs"
+                role="group"
+                aria-label="Filter positions by status"
+              >
+                <button
+                  onClick={() => setPositionFilter("open")}
+                  aria-pressed={positionFilter === "open"}
+                  className={positionFilter === "open" ? "active" : ""}
+                >
+                  Open <span>{data.openPositions}</span>
+                </button>
+                <button
+                  onClick={() => setPositionFilter("settled")}
+                  aria-pressed={positionFilter === "settled"}
+                  className={positionFilter === "settled" ? "active" : ""}
+                >
+                  Settled <span>{data.settledPositions}</span>
+                </button>
+              </div>
+            </div>
+            <div className="positions-panel">
+              {positions.length ? (
+                <div className="position-grid">
+                  {positions.map((position) => (
+                    <PositionCard
+                      key={position.id}
+                      position={position}
+                      research={data.research.find(
+                        (r) =>
+                          r.id === position.researchId &&
+                          r.ticker === position.ticker &&
+                          r.side === position.side,
+                      )}
+                      initialCashCents={data.initialCashCents}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon="positions"
+                  title={
+                    unavailable
+                      ? "Positions are currently unavailable"
+                      : positionFilter === "open"
+                        ? "No open positions"
+                        : "No settled positions"
+                  }
+                >
+                  {unavailable
+                    ? "Position history will return when the ledger connection is restored."
+                    : positionFilter === "open"
+                      ? "Accepted paper trades will appear here."
+                      : "Positions move here after official settlement."}
+                </EmptyState>
+              )}
+              <div className="positions-footnote">
+                <Icon name="shield" />
+                <span>
+                  Paper trades only. Cost includes modeled fees; open cost is
+                  not market value.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section
             className="journal-section"
             id="research"
             aria-labelledby="research-title"
@@ -588,140 +673,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                   )}
                 </EmptyState>
               )}
-            </div>
-          </section>
-
-          <section
-            className="positions-section"
-            id="positions"
-            aria-labelledby="positions-title"
-          >
-            <div className="section-heading">
-              <div>
-                <h2 id="positions-title">Paper positions</h2>
-              </div>
-              <div
-                className="position-tabs"
-                role="group"
-                aria-label="Filter positions by status"
-              >
-                <button
-                  onClick={() => setPositionFilter("open")}
-                  aria-pressed={positionFilter === "open"}
-                  className={positionFilter === "open" ? "active" : ""}
-                >
-                  Open <span>{data.openPositions}</span>
-                </button>
-                <button
-                  onClick={() => setPositionFilter("settled")}
-                  aria-pressed={positionFilter === "settled"}
-                  className={positionFilter === "settled" ? "active" : ""}
-                >
-                  Settled <span>{data.settledPositions}</span>
-                </button>
-              </div>
-            </div>
-            <div className="positions-panel">
-              {positions.length ? (
-                <div
-                  className="table-scroll"
-                  role="region"
-                  aria-label="Paper positions table"
-                  tabIndex={0}
-                >
-                  <table>
-                    <thead>
-                      <tr>
-                        <th scope="col">Market / entry time</th>
-                        <th scope="col">Side</th>
-                        <th scope="col">Contracts</th>
-                        <th scope="col">Entry</th>
-                        <th scope="col">Cost + fees</th>
-                        <th scope="col">
-                          {positionFilter === "settled"
-                            ? "Realized P&L"
-                            : "Status"}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {positions.map((position) => (
-                        <tr key={position.id}>
-                          <td>
-                            <strong>{position.title}</strong>
-                            <span className="table-subtext">
-                              {position.ticker}
-                            </span>
-                            <span className="table-subtext">
-                              {date(position.createdAt, true)}
-                            </span>
-                            {position.settledAt && (
-                              <span className="table-subtext">
-                                Settled {date(position.settledAt, true)}
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <span className={`side-badge ${position.side}`}>
-                              {position.side}
-                            </span>
-                          </td>
-                          <td className="numeric">
-                            {position.quantity.toLocaleString("en-US")}
-                          </td>
-                          <td className="numeric">{position.priceCents}¢</td>
-                          <td className="numeric">
-                            {money(position.costCents, 2)}
-                            <span className="table-subtext">
-                              {money(position.feeCents, 2)} est. fees
-                            </span>
-                          </td>
-                          <td>
-                            {position.status === "settled" ? (
-                              <span
-                                className={`position-return ${(position.profitCents ?? 0) >= 0 ? "positive" : "negative"}`}
-                              >
-                                {position.profitCents === null
-                                  ? "Pending"
-                                  : signedMoney(position.profitCents)}
-                              </span>
-                            ) : (
-                              <span className="open-status">
-                                <span />
-                                Awaiting settlement
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyState
-                  icon="positions"
-                  title={
-                    unavailable
-                      ? "Positions are currently unavailable"
-                      : positionFilter === "open"
-                        ? "No open positions"
-                        : "No settled positions"
-                  }
-                >
-                  {unavailable
-                    ? "Position history will return when the ledger connection is restored."
-                    : positionFilter === "open"
-                      ? "Accepted paper trades will appear here."
-                      : "Positions move here after official settlement."}
-                </EmptyState>
-              )}
-              <div className="positions-footnote">
-                <Icon name="shield" />
-                <span>
-                  Paper trades only. Cost includes modeled fees; open cost is
-                  not market value.
-                </span>
-              </div>
             </div>
           </section>
 

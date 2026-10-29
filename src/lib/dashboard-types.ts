@@ -31,6 +31,9 @@ export type DashboardPosition = {
   profitCents: number | null;
   createdAt: string;
   settledAt: string | null;
+  closesAt?: string | null;
+  timingAsOf?: string | null;
+  settlementResult?: "yes" | "no" | "scalar" | null;
 };
 export type DashboardData = {
   mode: "live" | "local" | "unconfigured" | "unavailable" | "demo";

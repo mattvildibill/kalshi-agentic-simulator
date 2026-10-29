@@ -1027,3 +1027,191 @@ td strong {
     grid-row: 2;
   }
 }
+/* Each card is one recorded fill; monetary totals never combine opposing sides. */
+.position-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.positions-panel {
+  background: transparent;
+  border: 0;
+  overflow: visible;
+}
+.position-card {
+  min-width: 0;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 22px;
+}
+.position-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.position-status,
+.fill-date {
+  font-size: 12px;
+  color: var(--muted);
+}
+.fill-date {
+  margin-top: 6px;
+}
+.position-card h3 {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.position-choice {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.bet-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 12px;
+  padding: 16px 0;
+  border-block: 1px solid var(--line);
+}
+.bet-amounts dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.bet-amounts dd {
+  margin: 8px 0 0;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.bet-note,
+.excerpt-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.bet-timing {
+  margin: 18px 0 12px;
+  font-size: 13px;
+}
+.bet-timing > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 6px 0;
+}
+.bet-timing dt {
+  color: var(--muted);
+}
+.bet-timing dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.bet-forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 16px;
+  margin-bottom: 8px;
+}
+.bet-forecast strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.bet-forecast span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.position-analysis {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+}
+.position-analysis > summary {
+  padding: 14px 0 0;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 14px;
+}
+.position-analysis[open] > summary {
+  margin-bottom: 16px;
+}
+.position-analysis h4 {
+  margin: 22px 0 8px;
+  font-size: 14px;
+}
+.research-prose p {
+  margin: 10px 0;
+  line-height: 1.75;
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.research-prose .excerpt-note {
+  font-size: 12px;
+}
+.technical-details {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #f8f9fb;
+  min-width: 0;
+}
+.technical-details summary {
+  cursor: pointer;
+  color: var(--blue);
+  font-size: 13px;
+  min-height: 24px;
+}
+.technical-details p,
+.technical-details pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.technical-details pre {
+  max-height: 450px;
+  overflow: auto;
+}
+.position-sources {
+  padding-left: 18px;
+  font-size: 13px;
+}
+.position-sources li {
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.position-sources a {
+  color: var(--blue);
+  text-decoration: underline;
+}
+@media (max-width: 1100px) {
+  .position-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 540px) {
+  .position-card {
+    padding: 18px 16px;
+  }
+  .bet-amounts {
+    gap: 10px;
+  }
+  .bet-amounts dd {
+    font-size: 18px;
+  }
+  .bet-timing > div {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .bet-timing dd {
+    text-align: left;
+  }
+}
