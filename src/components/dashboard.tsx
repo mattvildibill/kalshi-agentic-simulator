@@ -170,7 +170,9 @@ function ResearchCard({
                 ? "Watching"
                 : "Passed"}
           </span>
-          <span className="research-open-text">Read analysis</span>
+          <span className="research-open-text">
+            {expanded ? "Close analysis" : "Read analysis"}
+          </span>
         </div>
         <Icon name="chevron" className="expand-chevron" />
       </button>
@@ -216,9 +218,8 @@ function ResearchCard({
               })}
             </div>
             <p className="evidence-time">
-              Evidence as of {date(item.evidenceAsOf, true)}. Probabilities
-              refer to the selected side and are research estimates, not
-              guarantees.
+              Evidence as of {date(item.evidenceAsOf, true)}. Range reflects
+              uncertainty in the selected-side estimate.
             </p>
           </div>
         </div>
@@ -242,7 +243,7 @@ function EmptyState({
         <Icon name={icon} />
       </div>
       <h3>{title}</h3>
-      <p>{children}</p>
+      <div className="empty-description">{children}</div>
     </div>
   );
 }
@@ -275,11 +276,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
   const unavailable = data.mode === "unavailable";
   const unconfigured = data.mode === "unconfigured";
   const demo = data.mode === "demo";
-  const totalAtCost = data.cashCents + data.committedCents;
-  const cashShare =
-    totalAtCost > 0
-      ? Math.max(0, Math.min(1, data.cashCents / totalAtCost))
-      : 0;
   const researchCounts = {
     trade: data.research.filter((item) => item.decision === "trade").length,
     watch: data.research.filter((item) => item.decision === "watch").length,
@@ -316,21 +312,10 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             BLUE<span className="brand-period">.</span>
           </span>
         </a>
-        <div className="sidebar-description">
-          Independent thinking.
-          <br />
-          Accountable predictions.
-        </div>
-        <div className="nav-label">Research workspace</div>
         <nav aria-label="Main navigation">
-          <a
-            className="nav-link nav-overview"
-            href="#overview"
-            aria-label="Overview"
-          >
+          <a className="nav-link" href="#overview" aria-label="Overview">
             <Icon name="grid" />
             <span>Overview</span>
-            <span className="nav-active-dot" />
           </a>
           <a
             className="nav-link"
@@ -338,7 +323,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             aria-label="Research journal"
           >
             <Icon name="research" />
-            <span>Research journal</span>
+            <span>Research</span>
             <span className="nav-count">{data.research.length}</span>
           </a>
           <a
@@ -347,29 +332,17 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             aria-label="Paper positions"
           >
             <Icon name="positions" />
-            <span>Paper positions</span>
+            <span>Positions</span>
             <span className="nav-count">{data.openPositions}</span>
           </a>
           <a className="nav-link" href="#activity" aria-label="Activity log">
             <Icon name="activity" />
-            <span>Activity log</span>
+            <span>Activity</span>
           </a>
         </nav>
         <div className="sidebar-bottom">
-          <div className="paper-note">
-            <Icon name="shield" />
-            <span>
-              Real questions.
-              <br />
-              <strong>Imaginary money.</strong>
-            </span>
-          </div>
-          <p>
-            A {money(data.initialCashCents)} experiment in evidence,
-            uncertainty, and prediction markets.
-          </p>
           <a className="sidebar-demo-link" href={demo ? "/" : "/demo"}>
-            {demo ? "Return to the portfolio" : "Explore an illustrative demo"}
+            {demo ? "Back to portfolio" : "View demo"}
             <Icon name="arrow" />
           </a>
           <div className="sidebar-author">
@@ -385,7 +358,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         <header className="topbar">
           <div className="breadcrumb">
             <span>BLUE</span>
-            <span>/</span>Prediction research
+            <span>/</span>Kalshi paper trading
           </div>
           <div className="topbar-status">
             <span
@@ -413,10 +386,10 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           {unconfigured && (
             <div className="mode-banner setup-banner">
               <div>
-                <strong>The research lab is taking shape.</strong>
+                <strong>Portfolio not connected</strong>
                 <span>
-                  The starting bankroll is configured. A persistent ledger and
-                  Blue’s first review are still pending.
+                  The starting balance is shown below. Portfolio history is
+                  unavailable until storage is connected.
                 </span>
               </div>
               <span className="banner-label">Not connected</span>
@@ -445,48 +418,24 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          <section className="hero" id="overview" aria-labelledby="hero-title">
-            <div className="hero-copy">
-              <div className="eyebrow hero-eyebrow">
-                <span className="tiny-cross">+</span> The prediction research
-                lab
-              </div>
-              <h1 id="hero-title">
-                Follow the thesis.
-                <br />
-                <span>Measure the outcome.</span>
-              </h1>
-              <p>
-                Blue investigates prediction markets, challenges the evidence,
-                and puts every paper decision on the record.
-              </p>
-              <a className="text-link" href="#research">
-                Open the research journal <Icon name="arrow" />
-              </a>
-              <a
-                className="mobile-preview-link text-link"
-                href={demo ? "/" : "/demo"}
-              >
-                {demo
-                  ? "Return to the portfolio"
-                  : "Explore an illustrative demo"}
-                <Icon name="arrow" />
-              </a>
-            </div>
-            <div className="hero-note">
-              <span className="eyebrow">The operating principle</span>
-              <span className="hero-note-number">01 —</span>
-              <p>
-                Conviction is a hypothesis.
-                <br />
-                <em>The outcome is the test.</em>
-              </p>
-              <div className="note-line" />
-              <span className="hero-note-footer">
-                Research → Challenge → Decide → Learn
-              </span>
-            </div>
+          <section
+            className="page-heading"
+            id="overview"
+            aria-labelledby="portfolio-title"
+          >
+            <h1 id="portfolio-title">Portfolio</h1>
+            <a href={demo ? "/" : "/demo"}>
+              {demo ? "Back to portfolio" : "View demo"} <Icon name="arrow" />
+            </a>
           </section>
+          <div className="portfolio-freshness">
+            <Icon name="clock" />
+            <span>
+              Last settlement check:{" "}
+              {unavailable ? "Unavailable" : date(data.lastSyncAt, true)}
+            </span>
+            <span>Updated during reviews</span>
+          </div>
 
           <section className="metrics-grid" aria-label="Portfolio summary">
             <div className="metric-card primary-metric">
@@ -504,7 +453,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
               <span className="metric-caption">
                 {unconfigured
                   ? "Initial allocation · ledger pending"
-                  : "Uncommitted cash in the paper ledger"}
+                  : "Available for paper trades"}
               </span>
             </div>
             <div className="metric-card">
@@ -544,84 +493,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             </div>
           </section>
 
-          <div className="overview-grid">
-            <section className="allocation-panel panel">
-              <div className="panel-kicker">
-                <span className="eyebrow">Capital discipline</span>
-                <span className="panel-index">/ 01</span>
-              </div>
-              <div className="allocation-content">
-                <div className="allocation-ring">
-                  <svg viewBox="0 0 120 120" aria-hidden="true">
-                    <circle className="ring-track" cx="60" cy="60" r="51" />
-                    <circle
-                      className="ring-cash"
-                      cx="60"
-                      cy="60"
-                      r="51"
-                      strokeDasharray={`${cashShare * 320.44} 320.44`}
-                      transform="rotate(-90 60 60)"
-                    />
-                  </svg>
-                  <div>
-                    <strong>
-                      {unavailable
-                        ? "—"
-                        : `${(cashShare * 100).toFixed(cashShare === 1 || cashShare === 0 ? 0 : 1)}%`}
-                    </strong>
-                    <span>IN CASH</span>
-                  </div>
-                </div>
-                <div className="allocation-legend">
-                  <div>
-                    <span className="legend-square cash" />
-                    <span>Available cash</span>
-                    <strong>
-                      {unavailable ? "—" : money(data.cashCents, 2)}
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="legend-square deployed" />
-                    <span>Positions at cost</span>
-                    <strong>
-                      {unavailable ? "—" : money(data.committedCents, 2)}
-                    </strong>
-                  </div>
-                  <p>
-                    Cost allocation, not market valuation. Open positions can
-                    lose their entire cost.
-                  </p>
-                </div>
-              </div>
-            </section>
-            <section className="discipline-panel panel">
-              <div className="panel-kicker">
-                <span className="eyebrow">The research standard</span>
-                <span className="panel-index">/ 02</span>
-              </div>
-              <h2>
-                A good decision starts
-                <br />
-                with a good objection.
-              </h2>
-              <div className="discipline-tags">
-                <span>
-                  <Icon name="check" /> Primary sources
-                </span>
-                <span>
-                  <Icon name="check" /> Counterarguments
-                </span>
-                <span>
-                  <Icon name="check" /> Explicit uncertainty
-                </span>
-              </div>
-              <p>
-                Every thesis carries its evidence, an opposing case, and a
-                probability range. Passing is a decision, too.
-              </p>
-            </section>
-          </div>
-
           <section
             className="journal-section"
             id="research"
@@ -629,17 +500,11 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           >
             <div className="section-heading">
               <div>
-                <div className="eyebrow section-eyebrow">
-                  The reasoning behind the positions
-                </div>
                 <h2 id="research-title">
                   Research journal
                   <span className="heading-count">{data.research.length}</span>
                 </h2>
               </div>
-              <span className="section-note">
-                Every thesis. Including the ones we pass.
-              </span>
             </div>
             <div className="research-toolbar">
               <div
@@ -702,14 +567,25 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                       ? "No matching research"
                       : unavailable
                         ? "Research is currently unavailable"
-                        : "The first question is still open."
+                        : "No research yet"
                   }
                 >
                   {data.research.length
                     ? "Try another decision filter or search term."
                     : unavailable
                       ? "The journal will return when the ledger connection is restored."
-                      : "When Blue completes a review, the evidence, counterarguments, and decision will appear here. There is no pressure to place a trade."}
+                      : "Completed reviews will appear here."}
+                  {data.research.length > 0 && (
+                    <button
+                      className="clear-filters"
+                      onClick={() => {
+                        setSearch("");
+                        setResearchFilter("all");
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </EmptyState>
               )}
             </div>
@@ -722,9 +598,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           >
             <div className="section-heading">
               <div>
-                <div className="eyebrow section-eyebrow">
-                  Imaginary capital. A permanent record.
-                </div>
                 <h2 id="positions-title">Paper positions</h2>
               </div>
               <div
@@ -750,7 +623,12 @@ export default function Dashboard({ data }: { data: DashboardData }) {
             </div>
             <div className="positions-panel">
               {positions.length ? (
-                <div className="table-scroll">
+                <div
+                  className="table-scroll"
+                  role="region"
+                  aria-label="Paper positions table"
+                  tabIndex={0}
+                >
                   <table>
                     <thead>
                       <tr>
@@ -826,22 +704,22 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                     unavailable
                       ? "Positions are currently unavailable"
                       : positionFilter === "open"
-                        ? "Patience is part of the strategy."
-                        : "No settled positions yet."
+                        ? "No open positions"
+                        : "No settled positions"
                   }
                 >
                   {unavailable
                     ? "Position history will return when the ledger connection is restored."
                     : positionFilter === "open"
-                      ? "No open paper positions. A thesis must clear the evidence, pricing, liquidity, and risk checks before capital is committed."
-                      : "Resolved positions will show the original entry, estimated fees, official settlement, and realized paper return."}
+                      ? "Accepted paper trades will appear here."
+                      : "Positions move here after official settlement."}
                 </EmptyState>
               )}
               <div className="positions-footnote">
                 <Icon name="shield" />
                 <span>
-                  Simulated fills include conservative execution assumptions. No
-                  real orders, accounts, or money.
+                  Paper trades only. Cost includes modeled fees; open cost is
+                  not market value.
                 </span>
               </div>
             </div>
@@ -853,10 +731,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
               id="activity"
               aria-labelledby="activity-title"
             >
-              <div className="panel-kicker">
-                <span className="eyebrow">The audit trail</span>
-                <span className="panel-index">/ 03</span>
-              </div>
               <div className="activity-heading">
                 <h2 id="activity-title">Latest activity</h2>
                 <Icon name="activity" />
@@ -886,12 +760,12 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                   <span className="activity-node" />
                   <div>
                     <strong>
-                      {unavailable ? "Activity unavailable" : "A clean slate."}
+                      {unavailable ? "Activity unavailable" : "No activity yet"}
                     </strong>
                     <p>
                       {unavailable
                         ? "Waiting for the ledger connection."
-                        : "Research reviews, paper trades, and settlements will build the timeline here."}
+                        : "Research, trades, and settlements appear here."}
                     </p>
                   </div>
                 </div>
@@ -904,67 +778,12 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                 </div>
               </div>
             </section>
-            <section
-              className="method-panel panel"
-              aria-labelledby="method-title"
-            >
-              <div className="panel-kicker">
-                <span className="eyebrow">How Blue works</span>
-                <span className="panel-index">/ 04</span>
-              </div>
-              <h2 id="method-title">
-                A repeatable process.
-                <br />
-                An open notebook.
-              </h2>
-              <ol className="method-steps">
-                <li>
-                  <span>01</span>
-                  <div>
-                    <strong>Scout & research</strong>
-                    <p>
-                      Find a question worth investigating. Build a case from
-                      evidence.
-                    </p>
-                  </div>
-                </li>
-                <li>
-                  <span>02</span>
-                  <div>
-                    <strong>Challenge & decide</strong>
-                    <p>
-                      Test the opposing view. Weigh probability, price, and
-                      exposure.
-                    </p>
-                  </div>
-                </li>
-                <li>
-                  <span>03</span>
-                  <div>
-                    <strong>Record & learn</strong>
-                    <p>
-                      Preserve the reasoning. Follow the outcome. Evaluate the
-                      judgment.
-                    </p>
-                  </div>
-                </li>
-              </ol>
-              <div className="sync-status">
-                <span className="status-dot is-pending" />
-                <div>
-                  <strong>Updated on Blue review</strong>
-                  <span>
-                    Last settlement check: {date(data.lastSyncAt, true)}
-                  </span>
-                </div>
-              </div>
-            </section>
           </div>
           <footer className="footer">
             <div>
               <span className="footer-brand">BLUE.</span>
               <span>
-                An independent experiment by{" "}
+                By{" "}
                 <a
                   href="https://mattvildibill.com"
                   target="_blank"
@@ -976,13 +795,10 @@ export default function Dashboard({ data }: { data: DashboardData }) {
               </span>
             </div>
             <p>
-              <a href="/methodology">Read the methodology</a> ·{" "}
+              <a href="/methodology">How it works</a> ·{" "}
               <a href="/api/ledger">View the ledger</a>
               <br />
               Paper trading only. Not affiliated with Kalshi.
-              <br />
-              Research estimates are uncertain. Simulated returns do not
-              establish future performance.
             </p>
           </footer>
         </main>

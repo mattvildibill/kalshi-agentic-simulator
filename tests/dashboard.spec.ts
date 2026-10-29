@@ -14,7 +14,8 @@ test("actual portfolio separates its data from the fictional preview", async ({
     0,
   );
   await page
-    .getByRole("link", { name: "Explore an illustrative demo" })
+    .getByRole("link", { name: "View demo", exact: true })
+    .last()
     .click();
   await expect(
     page.getByText("Illustrative preview", { exact: true }),
@@ -65,4 +66,21 @@ test("methodology explains the actual simulation assumptions", async ({
     page.getByRole("heading", { name: "How a paper trade is recorded" }),
   ).toBeVisible();
   await expect(page.getByText(/There is no early-exit trading/)).toBeVisible();
+});
+
+test("empty search can be reset and research is keyboard accessible", async ({
+  page,
+}) => {
+  await page.goto("/demo");
+  await page.getByRole("searchbox").fill("no-matching-market");
+  await expect(page.getByText("No matching research")).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.locator(".research-card")).toHaveCount(4);
+  const card = page.locator(".research-card-trigger").first();
+  await card.focus();
+  await page.keyboard.press("Enter");
+  await expect(card).toHaveAttribute("aria-expanded", "true");
+  await expect(card.getByText("Close analysis")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(card).toHaveAttribute("aria-expanded", "false");
 });
