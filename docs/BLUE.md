@@ -124,7 +124,9 @@ Verification can update marks and settle existing **paper** positions; it create
 
 4. Return the new task's actual link/identifier, repository SHA, runtime binding readiness, and sanitized verification JSON. The CLI cannot itself prove task freshness; its success in the setup workspace is insufficient. Do not claim the handoff verified until this independent task's result has been observed. A scheduled Blue run requires separate evidence.
 
-**Current handoff status:** the file-based procedure was defective and has been replaced. Secure binding publication, matching production credential, and a genuinely fresh task's verification must be confirmed before marking this handoff complete.
+**Current handoff status (2026-10-29):** the secure runtime bindings are published and reported ready. The matching Vercel Production credential was updated and deployed. Using only injected variables, the setup task ran `verify` against the production domain successfully at `2026-10-29T05:31:20.969Z`: an unauthenticated portfolio read returned 401, authenticated portfolio reads succeeded, and a complete synchronization persisted the identical timestamp. The portfolio held $100,000 cash with zero open positions; no research or purchases were created. This checked CLI implementation commit `5e4b47c7eb4d9d77855430da27eeefcf900e859d`.
+
+**Still pending:** an independently launched fresh Blue task must run the procedure above and return its task link/identifier and sanitized result. The setup-task result is not proof of fresh-task secret delivery, live-market settlement coverage, or a scheduled run. Once that fresh task passes, Blue can resume the first research review under this playbook; report actual scan coverage and publish sourced decisions rather than test records.
 
 ### Research commands
 
