@@ -12,26 +12,11 @@ export default function Methodology() {
       }}
     >
       <Link href="/">← Back to Blue</Link>
-      <p
-        style={{
-          color: "#2459e0",
-          marginTop: 48,
-          fontWeight: 700,
-          letterSpacing: 2,
-        }}
-      >
-        THE EXPERIMENT
-      </p>
-      <h1 style={{ fontSize: "clamp(32px,6vw,58px)", lineHeight: 1.1 }}>
-        Research first.
-        <br />
-        Outcomes on the record.
-      </h1>
+      <h1>How it works</h1>
       <p>
-        This is an independent, imaginary-money prediction research experiment
-        coordinated by Blue, Matt Vildibill’s ChatGPT Dot. It starts with
-        $100,000 in paper cash. It is not affiliated with Kalshi, does not send
-        orders to Kalshi, and requires no Kalshi account.
+        This project tracks Blue’s research and simulated Kalshi trades. It
+        starts with $100,000 in paper cash. It is not affiliated with Kalshi,
+        does not send orders to Kalshi, and requires no Kalshi account.
       </p>
       <h2>How a decision is made</h2>
       <p>
@@ -84,17 +69,15 @@ export default function Methodology() {
         happens only when Blue invokes synchronization, so displayed results may
         lag the exchange.
       </p>
-      <h2>What success means</h2>
+      <h2>Reviewing results</h2>
       <p>
         Profit alone is noisy. Review probability calibration, research quality,
         correlated exposure, and how prices moved after a forecast. Keep
         original forecasts intact and publish new dated briefs when evidence
-        changes. A well-reasoned bet can lose, and a weak thesis can get lucky.
+        changes. Small samples do not establish forecasting skill.
       </p>
       <p>
-        <Link href="/demo">
-          Explore the clearly labeled fictional preview →
-        </Link>
+        <Link href="/demo">View demo →</Link>
       </p>
     </main>
   );
