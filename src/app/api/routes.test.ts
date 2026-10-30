@@ -1,3 +1,5 @@
+import { GET as publicPortfolio } from "./portfolio/route";
+import { refreshHeldMarkets } from "@/lib/automatic-sync";
 import { POST as resetPost } from "./runs/reset/route";
 import { GET as archiveExport } from "./runs/[id]/route";
 import { resetRun, runDigest } from "@/lib/runs";
@@ -617,5 +619,145 @@ describe("recoverable portfolio run lifecycle", () => {
       { params: Promise.resolve({ ticker: quote.ticker }) },
     );
     expect(result.status).toBe(409);
+  });
+});
+
+describe("automatic held-market refresh", () => {
+  beforeEach(() => {
+    vi.stubEnv("STORAGE_MODE", "local");
+    snapshot.activeRun = { id: "automatic-test-run", startedAt: now };
+    openPosition();
+  });
+  it("refreshes official bids without Blue credentials and never changes research or fills", async () => {
+    vi.stubEnv("BLUE_API_KEY", "");
+    const originalResearch = structuredClone(snapshot.ledger.research);
+    const originalTrades = structuredClone(snapshot.ledger.trades);
+    vi.mocked(getQuote).mockResolvedValue({
+      market: market(),
+      quote: { ...quote, yesBidCents: 99 },
+    });
+    const result = await publicPortfolio();
+    const body = await result.json();
+    expect(result.status).toBe(200);
+    expect(body.positions[0].markPriceCents).toBe(99);
+    expect(body.lastSyncAt).toBe(now);
+    expect(snapshot.ledger.research).toEqual(originalResearch);
+    expect(snapshot.ledger.trades).toEqual(originalTrades);
+    expect(result.headers.get("Cache-Control")).toBe("no-store");
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(new Date(Date.parse(now) + 60001));
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(2);
+  });
+  it("settles finalized wins exactly once across repeat and concurrent visitors", async () => {
+    const cashBefore = snapshot.ledger.cashCents;
+    vi.mocked(getMarket).mockResolvedValue(
+      market({ status: "finalized", result: "yes" }),
+    );
+    await Promise.all([
+      publicPortfolio(),
+      publicPortfolio(),
+      publicPortfolio(),
+    ]);
+    await publicPortfolio();
+    expect(snapshot.ledger.trades[0].status).toBe("settled");
+    expect(snapshot.ledger.cashCents).toBe(cashBefore + trade.quantity * 100);
+    expect(snapshot.ledger.settlements).toHaveLength(1);
+    expect(getMarket).toHaveBeenCalledTimes(1);
+    expect(getQuote).not.toHaveBeenCalled();
+  });
+  it("keeps unfinalized results open and exposes failures with a shared retry cooldown", async () => {
+    vi.mocked(getMarket).mockResolvedValueOnce(
+      market({ status: "closed", result: "yes" }),
+    );
+    await publicPortfolio();
+    expect(snapshot.ledger.settlements).toHaveLength(0);
+    vi.setSystemTime(new Date(Date.parse(now) + 60001));
+    vi.mocked(getMarket).mockRejectedValue(
+      new Error("Official market unavailable"),
+    );
+    const failed = await publicPortfolio();
+    expect(failed.status).toBe(200);
+    expect((await failed.json()).syncErrors[0].message).toBe(
+      "Official market unavailable",
+    );
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(2);
+    expect(snapshot.ledger.trades[0].status).toBe("open");
+    expect(snapshot.lastSyncAt).toBe(now);
+    vi.setSystemTime(new Date(Date.parse(now) + 120002));
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(3);
+  });
+  it("recovers expired leases but respects an in-flight server's lease", async () => {
+    snapshot.automaticSync = {
+      id: "another-server",
+      startedAt: now,
+      leaseUntil: new Date(Date.parse(now) + 90000).toISOString(),
+    };
+    await publicPortfolio();
+    expect(getMarket).not.toHaveBeenCalled();
+    vi.setSystemTime(new Date(Date.parse(now) + 90001));
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(1);
+  });
+  it("cannot commit in-flight market results into a replacement portfolio run", async () => {
+    vi.mocked(getMarket).mockImplementationOnce(async () => {
+      snapshot = resetRun(
+        snapshot,
+        {
+          idempotencyKey: "reset-auto-test",
+          expectedRunId: "automatic-test-run",
+          reason: "Test reset",
+        },
+        "replacement-run",
+        now,
+      ).snapshot;
+      return market({ status: "finalized", result: "yes" });
+    });
+    const result = await publicPortfolio();
+    expect(result.status).toBe(200);
+    expect((await result.json()).run.id).toBe("replacement-run");
+    expect(snapshot.ledger.cashCents).toBe(10000000);
+    expect(snapshot.ledger.settlements).toHaveLength(0);
+    expect(snapshot.archives![0].snapshot.ledger.trades[0].status).toBe("open");
+  });
+  it("continues bounded batches across automatic checks", async () => {
+    for (let i = 0; i < 12; i++) {
+      const ticker = `AUTO-${i}`;
+      const brief = {
+        ...research,
+        ticker,
+        idempotencyKey: `auto-research-${i}`,
+      };
+      snapshot.ledger = addResearch(snapshot.ledger, brief, now).state;
+      snapshot.ledger = executeTrade(
+        snapshot.ledger,
+        {
+          ...trade,
+          ticker,
+          researchId: `research_auto-research-${i}`,
+          idempotencyKey: `auto-trade-${i}`,
+        },
+        { ...quote, ticker, eventTicker: `EVENT-${i}` },
+        now,
+      ).state;
+    }
+    vi.mocked(getMarket).mockImplementation(async (ticker) =>
+      market({ ticker }),
+    );
+    vi.mocked(getQuote).mockImplementation(async (ticker) => ({
+      market: market({ ticker }),
+      quote: { ...quote, ticker },
+    }));
+    await refreshHeldMarkets(structuredClone(snapshot));
+    expect(getMarket).toHaveBeenCalledTimes(10);
+    expect(snapshot.syncRun?.pendingTickers).toHaveLength(3);
+    vi.setSystemTime(new Date(Date.parse(now) + 60001));
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(13);
+    expect(snapshot.syncRun).toBeNull();
+    expect(snapshot.lastSyncAt).toBe(new Date().toISOString());
   });
 });

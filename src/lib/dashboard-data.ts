@@ -1,3 +1,4 @@
+import { refreshHeldMarkets } from "./automatic-sync";
 import { activeRun } from "./runs";
 import { newerTiming } from "./market-timing";
 import type { DashboardData } from "./dashboard-types";
@@ -113,7 +114,17 @@ export async function getDashboard(): Promise<DashboardData> {
       lastActivityAt: null,
     };
   try {
-    return projectDashboard(await readSnapshot(), mode);
+    const snapshot = await readSnapshot();
+    try {
+      return projectDashboard(await refreshHeldMarkets(snapshot), mode);
+    } catch {
+      // Keep a readable ledger available if upstream refresh or its commit fails.
+      return {
+        ...projectDashboard(await readSnapshot(), mode),
+        marketUpdateError:
+          "Automatic market update unavailable. Showing saved data; retrying on the next check.",
+      };
+    }
   } catch {
     return {
       ...projectDashboard(

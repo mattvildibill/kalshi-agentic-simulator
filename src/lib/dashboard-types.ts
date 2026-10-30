@@ -53,6 +53,7 @@ export type DashboardData = {
   lastActivityAt: string | null;
   lastSyncAt: string | null;
   observedAt?: string;
+  marketUpdateError?: string;
   syncErrors?: { ticker: string; message: string }[];
   syncInProgress?: boolean;
   pendingSyncMarkets?: number;

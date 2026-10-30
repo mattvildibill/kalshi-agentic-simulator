@@ -77,10 +77,10 @@ export default function Methodology() {
         entry fees, and excludes future exit fees. If any open bid is missing,
         the portfolio total stays unavailable. Open cost is not market value.
         The performance chart uses settled profit only; historical portfolio
-        valuations are not inferred. Price observations are updated when Blue
-        runs a review; there is no continuous live feed. A settlement check
-        happens only when Blue invokes synchronization, so displayed results may
-        lag the exchange.
+        valuations are not inferred. Price observations and finalized
+        settlements update automatically while the dashboard is open. A
+        completed event may still await Kalshi’s official finalized result
+        before the portfolio records a payout.
       </p>
       <h2>Reviewing results</h2>
       <p>
@@ -109,12 +109,13 @@ export default function Methodology() {
         <Link href="/demo">View demo →</Link>
       </p>
       <p>
-        The dashboard reloads the saved portfolio every five minutes while
-        visible, and when returning to a tab whose last check was at least a
-        minute ago. Refresh reloads it on demand. These reads do not place
-        trades or fetch new execution quotes; market prices and settlement
-        results update when Blue completes a review. Failed updates remain
-        visible.
+        The dashboard checks held markets about every minute while visible, on
+        page load, and when returning to a tab whose last check was at least a
+        minute ago. Refresh checks on demand, sharing the same one-minute limit
+        across visitors. Each check handles up to 10 markets; larger portfolios
+        continue on later checks. It records official bids and supported
+        finalized payouts without a Blue review. New research and paper
+        purchases still require Blue. Failed updates remain visible.
       </p>
     </main>
   );
