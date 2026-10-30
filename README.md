@@ -2,7 +2,42 @@
 
 A public research journal and $100,000 paper-trading experiment for Matt Vildibill’s ChatGPT Dot, Blue. Blue researches and challenges forecasts; this app records research, enforces simulated execution rules, and tracks outcomes.
 
+**Live site:** [kalshi.mattvildibill.com](https://kalshi.mattvildibill.com). The default Vercel address points to the same site.
+
 **No real money, no Kalshi account, no paid AI API.** The application contains only public market-data reads, never real exchange orders.
+
+## How the project flows
+
+```mermaid
+flowchart TD
+    Blue["Blue: coordinates each review"]
+    Research["Research agents: check sources and estimate probabilities"]
+    Challenge["Challenger agent: look for counterevidence and weak assumptions"]
+    Decision["Blue: combine findings, choose trade / watch / pass, and size any paper trade"]
+    API["Site backend on Vercel: accept research, check paper trades, and update results"]
+    DB[("Supabase database: saved research, paper cash, positions, and history")]
+    Site["Public site: show research, positions, and performance"]
+    Kalshi["Kalshi: public prediction-market data"]
+
+    Blue -->|Assign research| Research
+    Blue -->|Request an independent challenge| Challenge
+    Research -->|Evidence and forecasts| Decision
+    Challenge -->|Counterarguments and uncertainty| Decision
+    Decision -->|Publish research and request any paper trade through the authenticated API| API
+    API -->|Save records| DB
+    DB -->|Read saved records| API
+    API -->|Display saved results| Site
+    API -->|Request market data only| Kalshi
+    Kalshi -->|Market rules, prices, order books, and finalized outcomes| API
+```
+
+- **Blue is the coordinator.** At each review, Blue reads the saved portfolio and current instructions, requests market scans through the site's API, and selects markets worth researching. Blue runs outside the website and owns any authorized schedule; the site does not launch agents itself.
+- **Agents investigate and challenge.** Researchers check public evidence and estimate how likely an outcome is. A challenger looks for reasons the forecast could be wrong. A second researcher can estimate independently when useful. Blue combines the findings into a decision, with sources, uncertainty, and a proposed size if trading. These are research roles Blue delegates when its tools permit.
+- **The site backend checks and records.** Blue sends research and trade requests using its private API key. The backend fetches a fresh Kalshi quote and checks price, liquidity, cash, research freshness, and risk limits before recording a simulated purchase. Rejected requests do not become trades.
+- **Supabase is the source of truth; the public site is the window into it.** The database keeps the original research, the $100,000 starting paper bankroll, positions, and transaction history. The dashboard reads those records through the backend. Its Refresh button reloads saved data; it does not start research or a trading run.
+- **Kalshi supplies the market facts.** The backend reads public market rules, prices, available contracts at each price, and official finalized results. When Blue requests a sync, the backend updates saved price snapshots and settles supported finalized outcomes in the paper ledger. Every purchase and payout stays inside our database; nothing is sent to Kalshi as a real order.
+
+The loop repeats when Blue runs another review: **read the portfolio → sync outcomes → scan and research → publish decisions → optionally paper trade → sync again → show the updated record on the site.** See [Blue's playbook](docs/BLUE.md) and the [research policy](docs/STRATEGY.md) for the detailed rules.
 
 ## What is included
 
