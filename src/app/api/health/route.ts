@@ -1,3 +1,4 @@
+import { RISK_POLICY } from "@/lib/engine";
 import { response } from "@/lib/http";
 import { readSnapshot, storageMode } from "@/lib/storage";
 export const runtime = "nodejs";
@@ -17,6 +18,7 @@ export async function GET() {
     {
       status: database && blueConfigured ? "ready" : "setup_required",
       paperOnly: true,
+      riskPolicy: RISK_POLICY,
       storage,
       database,
       blueConfigured,

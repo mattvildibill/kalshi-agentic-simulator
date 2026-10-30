@@ -7,7 +7,7 @@ export const MAX_QUOTE_AGE_MS = 60_000;
 export const MIN_MARKET_FILL_INTERVAL_MS = 60_000;
 export const MAX_RESEARCH_AGE_MS = 24 * 60 * 60 * 1000;
 export const RISK_POLICY = {
-  positionFraction: 0.02,
+  positionFraction: 0.1,
   eventFraction: 0.1,
   slippageCents: 1,
 } as const;
@@ -411,7 +411,7 @@ export function executeTrade(
   )
     fail(
       "POSITION_LIMIT",
-      "This purchase would exceed the 2% initial-bankroll limit for one market.",
+      "This purchase would exceed the 10% initial-bankroll limit for one market.",
     );
   if (
     costCents + eventExposure >

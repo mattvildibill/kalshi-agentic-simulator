@@ -291,15 +291,15 @@ describe("paper ledger", () => {
   it("caps cumulative market exposure and independently prevents borrowing", () => {
     const first = executeTrade(
       ready(),
-      { ...tradeInput, quantity: 4_000 },
-      quote,
+      { ...tradeInput, quantity: 20_000 },
+      { ...quote, yesAskDepth: 100_000 },
       now,
     );
     code(
       () =>
         executeTrade(
           first.state,
-          { ...tradeInput, idempotencyKey: "buy-2", quantity: 1_000 },
+          { ...tradeInput, idempotencyKey: "buy-2", quantity: 4_000 },
           { ...quote, observedAt: nextFillTime },
           nextFillTime,
         ),
@@ -308,6 +308,76 @@ describe("paper ledger", () => {
     code(
       () => executeTrade({ ...ready(), cashCents: 1 }, tradeInput, quote, now),
       "INSUFFICIENT_CASH",
+    );
+  });
+
+  it("accepts exactly $10,000 including fees but rejects the next contract", () => {
+    const boundaryQuote = { ...quote, yesAskCents: 34, yesAskDepth: 100_000 };
+    const input = { ...tradeInput, quantity: 27_328 };
+    const result = executeTrade(ready(), input, boundaryQuote, now);
+    expect(result.trade.costCents).toBe(1_000_000);
+    expect(result.trade.feeCents).toBe(43_520);
+    expect(result.state.cashCents).toBe(9_000_000);
+    expect(executeTrade(result.state, input, boundaryQuote, now).state).toBe(
+      result.state,
+    );
+    code(
+      () =>
+        executeTrade(
+          ready(),
+          { ...input, quantity: 27_329 },
+          boundaryQuote,
+          now,
+        ),
+      "POSITION_LIMIT",
+    );
+  });
+
+  it("counts combined YES and NO fills and their fees toward the same $10,000", () => {
+    const boundaryQuote = {
+      ...quote,
+      yesAskCents: 34,
+      noAskCents: 34,
+      yesAskDepth: 100_000,
+      noAskDepth: 100_000,
+    };
+    const first = executeTrade(
+      ready(),
+      { ...tradeInput, quantity: 13_664 },
+      boundaryQuote,
+      now,
+    );
+    const state = addResearch(
+      first.state,
+      { ...researchInput, idempotencyKey: "review-no-boundary", side: "no" },
+      now,
+    ).state;
+    const input = {
+      ...tradeInput,
+      idempotencyKey: "buy-no-boundary",
+      researchId: "research_review-no-boundary",
+      side: "no" as const,
+      quantity: 13_664,
+    };
+    const second = executeTrade(
+      state,
+      input,
+      { ...boundaryQuote, observedAt: nextFillTime },
+      nextFillTime,
+    );
+    expect(second.state.trades.reduce((sum, t) => sum + t.costCents, 0)).toBe(
+      1_000_000,
+    );
+    expect(second.state.cashCents).toBe(9_000_000);
+    code(
+      () =>
+        executeTrade(
+          state,
+          { ...input, quantity: 13_665 },
+          { ...boundaryQuote, observedAt: nextFillTime },
+          nextFillTime,
+        ),
+      "POSITION_LIMIT",
     );
   });
 
