@@ -1,4 +1,4 @@
-import { timingFromMarket } from "./market-timing";
+import { timingFromMarket, officialTimestamp } from "./market-timing";
 import { z } from "zod";
 import type { MarketQuote, SettlementInput } from "./engine";
 
@@ -174,11 +174,7 @@ function bestBid(
   }
   return best;
 }
-export function quoteFromData(
-  market: Market,
-  payload: unknown,
-  observedAt: string,
-): MarketQuote {
+function requireStandardMarket(market: Market) {
   const notional =
     market.notional_value_dollars !== undefined
       ? microDollars(market.notional_value_dollars)
@@ -196,6 +192,19 @@ export function quoteFromData(
       "This version trades standard $1 binary markets only.",
     );
   }
+}
+export function quoteFromData(
+  market: Market,
+  payload: unknown,
+  observedAt: string,
+): MarketQuote {
+  requireStandardMarket(market);
+  const closesAt = officialTimestamp(market.close_time);
+  if (!closesAt)
+    throw new MarketDataError(
+      "INVALID_MARKET_DATA",
+      "A verified trading deadline is required before paper execution.",
+    );
   const data = payload as {
     orderbook_fp?: { yes_dollars?: unknown; no_dollars?: unknown };
     orderbook?: { yes?: unknown; no?: unknown };
@@ -214,6 +223,11 @@ export function quoteFromData(
     fixed ? data.orderbook_fp?.no_dollars : data.orderbook?.no,
     fixed,
   );
+  if (yes && no && yes.microPrice + no.microPrice > 1_000_000)
+    throw new MarketDataError(
+      "INVALID_ORDERBOOK",
+      "The observed order book is crossed; refresh before requesting a paper fill.",
+    );
   return {
     ticker: market.ticker,
     eventTicker: market.event_ticker,
@@ -225,7 +239,7 @@ export function quoteFromData(
           ? "settled"
           : "closed",
     observedAt,
-    closesAt: market.close_time,
+    closesAt,
     marketTiming: timingFromMarket(market, observedAt),
     sourceUrl: `${KALSHI_BASE_URL}/markets/${encodeURIComponent(market.ticker)}/orderbook`,
     rulesPrimary: market.rules_primary,
@@ -238,10 +252,15 @@ export function quoteFromData(
     noBidCents: no ? Math.floor(no.microPrice / 10_000) : null,
   };
 }
-export async function getQuote(ticker: string) {
+export async function getQuote(ticker: string, observedMarket?: Market) {
   validTicker(ticker);
+  if (observedMarket && observedMarket.ticker !== ticker)
+    throw new MarketDataError(
+      "INVALID_MARKET_DATA",
+      "Market identity does not match the requested quote.",
+    );
   const [market, book] = await Promise.all([
-    getMarket(ticker),
+    observedMarket ? Promise.resolve(observedMarket) : getMarket(ticker),
     getJson(`/markets/${encodeURIComponent(ticker)}/orderbook?depth=1`),
   ]);
   return {
@@ -254,6 +273,7 @@ export function settlementFromMarket(
   observedAt: string,
 ): SettlementInput | null {
   if (market.status !== "finalized") return null;
+  requireStandardMarket(market);
   if (!["yes", "no", "scalar"].includes(market.result || ""))
     throw new MarketDataError(
       "SETTLEMENT_REVIEW_REQUIRED",

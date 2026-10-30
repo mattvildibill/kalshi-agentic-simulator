@@ -7,6 +7,7 @@ const local = args[0] === "--local";
 if (local) args.shift();
 const [command = "status", argument] = args;
 const paths = {
+  instructions: "/api/blue/instructions",
   status: "/api/blue/portfolio",
   scan: "/api/markets",
   research: "/api/research",
@@ -28,7 +29,7 @@ try {
   } else {
     if (!Object.hasOwn(paths, command))
       throw new Error(
-        "Usage: npm run blue -- verify|status|scan [cursor]|quote <ticker>|research <json-file>|trade <json-file>|reset <json-file>|runs|archive <run-id>|sync [cursor]|health|ledger",
+        "Usage: npm run blue -- instructions|verify|status|scan [cursor]|quote <ticker>|research <json-file>|trade <json-file>|reset <json-file>|runs|archive <run-id>|sync [cursor]|health|ledger",
       );
     let path = paths[command];
     if (["quote", "archive"].includes(command)) {

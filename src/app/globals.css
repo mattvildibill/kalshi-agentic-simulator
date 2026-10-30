@@ -1718,3 +1718,81 @@ button:disabled {
     transition: none !important;
   }
 }
+
+/* Audit improvements: visible review state and compact gross-exposure context. */
+.refresh-button:disabled {
+  opacity: 0.65;
+}
+.review-banner {
+  border-color: var(--amber);
+}
+.review-banner details {
+  margin-top: 8px;
+}
+.review-banner ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+.stale-note {
+  color: var(--amber);
+  margin: -8px 2px 16px;
+}
+.risk-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.risk-strip dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+.risk-strip dd {
+  margin: 5px 0 0;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.risk-strip dd span {
+  font-size: 10px;
+  color: var(--muted);
+}
+@media (max-width: 660px) {
+  .heading-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .heading-actions .refresh-button {
+    margin-top: 0;
+  }
+  .risk-strip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .risk-strip > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .risk-strip dd {
+    text-align: right;
+  }
+  .risk-strip dd span {
+    display: block;
+  }
+}
+.mobile-invested {
+  display: none;
+}
+@media (max-width: 660px) {
+  .market-subline .mobile-invested {
+    display: block;
+    flex-basis: 100%;
+    color: var(--ink);
+  }
+}

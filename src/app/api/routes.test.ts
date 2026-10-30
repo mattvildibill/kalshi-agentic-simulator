@@ -18,6 +18,8 @@ import { POST as researchPost } from "./research/route";
 import { POST as tradePost } from "./trades/route";
 import { POST as syncPost } from "./sync/route";
 import { GET as privatePortfolio } from "./blue/portfolio/route";
+import { GET as instructions } from "./blue/instructions/route";
+import { createHash } from "node:crypto";
 
 vi.mock("@/lib/storage", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/storage")>()),
@@ -128,6 +130,42 @@ afterEach(() => {
 });
 
 describe("authenticated research and trade boundary", () => {
+  it("rejects research superseded while the server quote was in flight", async () => {
+    vi.mocked(getQuote).mockImplementationOnce(async () => {
+      snapshot.ledger = addResearch(
+        snapshot.ledger,
+        { ...research, idempotencyKey: "new-pass", decision: "pass" },
+        now,
+      ).state;
+      return { market: market(), quote };
+    });
+    const result = await tradePost(request("/api/trades", trade));
+    expect(result.status).toBe(422);
+    expect((await result.json()).error.code).toBe("RESEARCH_SUPERSEDED");
+    expect(snapshot.ledger.trades).toHaveLength(0);
+    expect(snapshot.ledger.cashCents).toBe(10000000);
+  });
+  it("serves only authenticated, versioned deployed instructions with a reproducible hash", async () => {
+    expect(
+      (await instructions(request("/api/blue/instructions", undefined, false)))
+        .status,
+    ).toBe(401);
+    const result = await instructions(request("/api/blue/instructions"));
+    expect(result.status).toBe(200);
+    const body = await result.json();
+    expect(body.version).toBe("2026-10-29.1");
+    expect(body.playbook).toContain("RESEARCH_SUPERSEDED");
+    expect(body.strategy).toContain("lowCaseEVcents");
+    expect(body.sha256).toBe(
+      createHash("sha256")
+        .update(
+          JSON.stringify({ playbook: body.playbook, strategy: body.strategy }),
+        )
+        .digest("hex"),
+    );
+    expect(result.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.playbook + body.strategy).not.toContain(token);
+  });
   it("rejects unauthenticated writes before reading or mutating the ledger", async () => {
     const response = await researchPost(
       request("/api/research", research, false),
@@ -181,6 +219,44 @@ describe("authenticated research and trade boundary", () => {
 });
 
 describe("settlement synchronization", () => {
+  it("continues with markets added during upstream work before declaring completion", async () => {
+    openPosition();
+    vi.mocked(getMarket).mockImplementationOnce(async () => {
+      const nextResearch = {
+        ...research,
+        idempotencyKey: "second-market-research",
+        ticker: "SECOND-MARKET",
+      };
+      snapshot.ledger = addResearch(snapshot.ledger, nextResearch, now).state;
+      snapshot.ledger = executeTrade(
+        snapshot.ledger,
+        {
+          ...trade,
+          idempotencyKey: "second-market-fill",
+          ticker: "SECOND-MARKET",
+          researchId: "research_second-market-research",
+        },
+        { ...quote, ticker: "SECOND-MARKET" },
+        now,
+      ).state;
+      return market();
+    });
+    const first = await (await syncPost(request("/api/sync"))).json();
+    expect(first.complete).toBe(false);
+    expect(first.nextCursor).toBeTruthy();
+    expect(snapshot.syncRun?.pendingTickers).toEqual(["SECOND-MARKET"]);
+    expect(snapshot.lastSyncAt).toBeNull();
+    vi.mocked(getMarket).mockResolvedValue(market({ ticker: "SECOND-MARKET" }));
+    vi.mocked(getQuote).mockResolvedValue({
+      market: market({ ticker: "SECOND-MARKET" }),
+      quote: { ...quote, ticker: "SECOND-MARKET" },
+    });
+    const second = await (
+      await syncPost(request(`/api/sync?cursor=${first.nextCursor}`))
+    ).json();
+    expect(second.complete).toBe(true);
+    expect(snapshot.lastSyncAt).toBe(now);
+  });
   it("ignores a submitted winning result and uses the authoritative losing result", async () => {
     openPosition();
     const cash = snapshot.ledger.cashCents;

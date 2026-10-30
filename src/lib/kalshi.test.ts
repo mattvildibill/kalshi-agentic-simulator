@@ -20,6 +20,67 @@ const market: Market = {
 };
 afterEach(() => vi.unstubAllGlobals());
 describe("public Kalshi adapter", () => {
+  it("refuses execution without a valid deadline and settlement of unsupported payout types", () => {
+    expect(() =>
+      quoteFromData({ ...market, close_time: "" }, { orderbook: {} }, now),
+    ).toThrow("deadline");
+    expect(() =>
+      settlementFromMarket(
+        {
+          ...market,
+          status: "finalized",
+          result: "yes",
+          notional_value_dollars: "5.00",
+        },
+        now,
+      ),
+    ).toThrow("standard $1 binary");
+    expect(() =>
+      settlementFromMarket(
+        {
+          ...market,
+          status: "finalized",
+          result: "yes",
+          settlement_bounds_type: "nonstandard",
+        },
+        now,
+      ),
+    ).toThrow("standard $1 binary");
+  });
+  it("refuses crossed books rather than manufacturing a cheap paper fill", () => {
+    expect(() =>
+      quoteFromData(
+        market,
+        { orderbook: { yes: [[70, 100]], no: [[50, 100]] } },
+        now,
+      ),
+    ).toThrow("crossed");
+    expect(() =>
+      quoteFromData(
+        market,
+        {
+          orderbook_fp: {
+            yes_dollars: [["0.705", "100.00"]],
+            no_dollars: [["0.30", "100.00"]],
+          },
+        },
+        now,
+      ),
+    ).toThrow("crossed");
+  });
+  it("reuses a verified market during sync without fetching it twice", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({ orderbook: { yes: [[40, 100]], no: [[55, 100]] } }),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    await getQuote(market.ticker, market);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0][0]).toContain("/orderbook");
+    await expect(getQuote("OTHER", market)).rejects.toThrow("identity");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
   it("derives asks from opposing bids, uses best prices regardless of order, and conservatively rounds fractions", () => {
     const quote = quoteFromData(
       market,

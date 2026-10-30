@@ -73,6 +73,46 @@ function code(action: () => unknown, expected: string) {
 }
 
 describe("paper ledger", () => {
+  it.each(["trade", "watch", "pass"] as const)(
+    "rejects a recommendation superseded by a newer %s record",
+    (decision) => {
+      const revised = addResearch(
+        ready(),
+        { ...researchInput, idempotencyKey: "newer-review", decision },
+        now,
+      ).state;
+      code(
+        () => executeTrade(revised, tradeInput, quote, now),
+        "RESEARCH_SUPERSEDED",
+      );
+      if (decision === "trade")
+        expect(
+          executeTrade(
+            revised,
+            { ...tradeInput, researchId: "research_newer-review" },
+            quote,
+            now,
+          ).replayed,
+        ).toBe(false);
+    },
+  );
+  it("replays an accepted fill even after a newer pass without new exposure", () => {
+    const first = executeTrade(ready(), tradeInput, quote, now);
+    const revised = addResearch(
+      first.state,
+      { ...researchInput, idempotencyKey: "later-pass", decision: "pass" },
+      now,
+    ).state;
+    const replay = executeTrade(
+      revised,
+      tradeInput,
+      { ...quote, status: "closed" },
+      later,
+    );
+    expect(replay.replayed).toBe(true);
+    expect(replay.state.cashCents).toBe(first.state.cashCents);
+    expect(replay.state.trades).toHaveLength(1);
+  });
   it("starts with exactly $100,000 and records the initial deposit", () => {
     const state = createInitialState(now);
     expect(state.cashCents).toBe(10_000_000);

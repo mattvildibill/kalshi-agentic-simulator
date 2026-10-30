@@ -18,6 +18,10 @@ The production dashboard never substitutes sample data when storage is unavailab
 
 The dashboard uses the supplied Blue UI reference: horizontal navigation, four portfolio metrics, realized-performance chart, compact position tables, and research dialogs. Portfolio value uses timestamped selected-side bids from recorded marks; an incomplete set of bids leaves the total unavailable. The chart includes settled profit only because the ledger does not retain historical market valuations. Opportunities show the latest published trade/watch decision per market and side, without inventing prices or estimated edge. Full entry research, evidence, fill accounting, and local/UTC settlement schedules remain available in market details.
 
+The dashboard supports manual refresh and a five-minute visible-tab refresh of the saved ledger, preserving filters and last readable data on failure. It shows incomplete/failed market reviews and flags older price snapshots. The shortlist excludes settled markets and forecasts more than 24 hours old; the full journal retains every original brief. Stored accounting is reconciled before reads and writes, and superseded forecasts cannot authorize new fills.
+
+Blue's [research and sizing policy](docs/STRATEGY.md) adds explicit source verification, independent challenge, low-case expected-value stress tests, correlation budgets and calibration discipline. Retrieve the deployed version and content hash with `NODE_USE_ENV_PROXY=1 npm run blue -- instructions`; it calls the authenticated `/api/blue/instructions` endpoint. Research-policy budgets are instructions, distinct from the engine's unchanged 10% market/event caps. See the [project audit](docs/AUDIT-2026-10-29.md) for findings and outstanding operational limits.
+
 ## Development
 
 Node.js 22+ is required; this environment uses Node.js 24. npm's lockfile pins dependencies.

@@ -6,7 +6,12 @@ import type {
   DashboardPosition,
   DashboardResearch,
 } from "@/lib/dashboard-types";
-import { portfolioValues } from "@/lib/dashboard-display";
+import {
+  portfolioValues,
+  portfolioRisk,
+  researchShortlist,
+} from "@/lib/dashboard-display";
+import { useDashboardData } from "./use-dashboard-data";
 import {
   date,
   DetailDialog,
@@ -29,7 +34,13 @@ const viewTitles: Record<View, string> = {
   activity: "Every decision, recorded",
 };
 
-export default function Dashboard({ data }: { data: DashboardData }) {
+export default function Dashboard({
+  data: initialData,
+}: {
+  data: DashboardData;
+}) {
+  const { data, refreshing, refreshError, refreshedAt, refresh } =
+    useDashboardData(initialData);
   const [view, setView] = useState<View>("overview");
   const [researchFilter, setResearchFilter] = useState<
     "all" | "trade" | "watch" | "pass"
@@ -40,10 +51,27 @@ export default function Dashboard({ data }: { data: DashboardData }) {
   const [search, setSearch] = useState("");
   const [opportunitySearch, setOpportunitySearch] = useState("");
   const [category, setCategory] = useState("All markets");
-  const [selectedResearch, setSelectedResearch] =
-    useState<DashboardResearch | null>(null);
-  const [selectedPosition, setSelectedPosition] =
-    useState<DashboardPosition | null>(null);
+  const [selection, setSelection] = useState<{
+    kind: "research" | "position";
+    id: string;
+    runId?: string;
+  } | null>(null);
+  const selectedResearch =
+    selection?.kind === "research" && selection.runId === data.run?.id
+      ? data.research.find((r) => r.id === selection.id)
+      : undefined;
+  const selectedPosition =
+    selection?.kind === "position" && selection.runId === data.run?.id
+      ? data.positions.find((p) => p.id === selection.id)
+      : undefined;
+  const setSelectedResearch = (item: DashboardResearch | null) =>
+    setSelection(
+      item ? { kind: "research", id: item.id, runId: data.run?.id } : null,
+    );
+  const setSelectedPosition = (item: DashboardPosition | null) =>
+    setSelection(
+      item ? { kind: "position", id: item.id, runId: data.run?.id } : null,
+    );
   useEffect(() => {
     const syncView = () => {
       const hash = window.location.hash.slice(1);
@@ -77,14 +105,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
-  const shortlist = useMemo(() => {
-    const latest = new Map<string, DashboardResearch>();
-    for (const r of allResearch) {
-      const key = `${r.ticker}:${r.side}`;
-      if (!latest.has(key)) latest.set(key, r);
-    }
-    return [...latest.values()].filter((r) => r.decision !== "pass");
-  }, [allResearch]);
+  const shortlist = useMemo(() => researchShortlist(data), [data]);
   const categories = [
     "All markets",
     ...new Set(shortlist.map((r) => r.category || "Uncategorized")),
@@ -101,6 +122,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
     .filter((p) => p.status === positionFilter)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const values = portfolioValues(data);
+  const risk = portfolioRisk(data);
   const unavailable = data.mode === "unavailable";
   const unconfigured = data.mode === "unconfigured";
   const demo = data.mode === "demo";
@@ -123,6 +145,11 @@ export default function Dashboard({ data }: { data: DashboardData }) {
     .filter((p) => p.status === "open" && p.markAsOf)
     .map((p) => p.markAsOf!)
     .sort();
+  const bidsStale =
+    !demo &&
+    marks.length > 0 &&
+    Number.isFinite(Date.parse(data.observedAt ?? "")) &&
+    Date.parse(data.observedAt!) - Date.parse(marks[0]) > 15 * 60000;
 
   return (
     <div className="app-shell">
@@ -163,7 +190,9 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           )}
         </nav>
         <div className="header-status">
-          <span className={`status-dot ${pending ? "is-pending" : ""}`} />
+          <span
+            className={`status-dot ${pending || refreshError || data.syncErrors?.length ? "is-pending" : ""}`}
+          />
           <span>{modeLabel}</span>
           <span className="paper-tag">Paper only</span>
         </div>
@@ -233,9 +262,20 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           </div>
           <div className="heading-actions">
             <span className="updated">
-              Settlement check ·{" "}
+              Last completed review ·{" "}
               {unavailable ? "Unavailable" : date(data.lastSyncAt, true)}
             </span>
+            {!demo && (
+              <button
+                type="button"
+                className="button refresh-button"
+                onClick={() => void refresh()}
+                disabled={refreshing}
+                aria-label="Refresh portfolio"
+              >
+                {refreshing ? "Refreshing…" : "Refresh"}
+              </button>
+            )}
             {view === "overview" && (
               <button
                 type="button"
@@ -248,6 +288,44 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           </div>
         </section>
 
+        {refreshError && (
+          <div className="mode-banner unavailable-banner" role="status">
+            <div>
+              <strong>Portfolio refresh unavailable</strong>
+              <span>
+                Showing the last loaded portfolio. Prices may be outdated; try
+                Refresh again.
+              </span>
+            </div>
+          </div>
+        )}
+        {(data.syncErrors?.length ?? 0) > 0 && (
+          <div className="mode-banner review-banner" role="status">
+            <div>
+              <strong>Market review needs attention</strong>
+              <span>
+                {data.syncErrors!.length} market updates failed. The last
+                completed review is {date(data.lastSyncAt, true)}.
+              </span>
+              <details>
+                <summary>Show affected markets</summary>
+                <ul>
+                  {data.syncErrors!.map((error) => (
+                    <li key={error.ticker}>
+                      {error.ticker}: {error.message}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </div>
+          </div>
+        )}
+        {data.syncInProgress && (
+          <p className="section-note" role="status">
+            Review in progress · {data.pendingSyncMarkets ?? 0} markets
+            remaining
+          </p>
+        )}
         <section className="metrics-grid" aria-label="Portfolio summary">
           <div className="metric">
             <span className="label">Portfolio value</span>
@@ -315,11 +393,18 @@ export default function Dashboard({ data }: { data: DashboardData }) {
           <Icon name="clock" />
           <span>
             {marks.length
-              ? `Recorded bids · ${date(marks[0], true)}${marks[0] !== marks.at(-1) ? ` – ${date(marks.at(-1), true)}` : ""}`
+              ? `Recorded bids · ${date(marks[0], true)}${date(marks[0], true) !== date(marks.at(-1), true) ? ` – ${date(marks.at(-1), true)}` : ""}`
               : "Market values appear when bids are recorded."}{" "}
-            Updated during reviews.
+            Updated during reviews.{" "}
+            {refreshedAt && `Portfolio reloaded ${date(refreshedAt, true)}.`}
           </span>
         </div>
+        {bidsStale && (
+          <p className="section-note stale-note" role="status">
+            Prices are from an earlier review. Values are saved snapshots; Blue
+            must complete a market review to update prices.
+          </p>
+        )}
 
         {view === "overview" && (
           <>
@@ -423,6 +508,34 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                 Paper only. Each row is one fill. Bid valuations are snapshots,
                 not cash-out offers; future exit fees are excluded.
               </p>
+              <dl className="risk-strip" aria-label="Portfolio exposure">
+                <div>
+                  <dt>Distinct open markets</dt>
+                  <dd>
+                    {pending ? "—" : risk.markets}{" "}
+                    <span>
+                      across {pending ? "—" : data.openPositions} fills
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Starting capital invested</dt>
+                  <dd>
+                    {pending || risk.investedFraction === null
+                      ? "—"
+                      : `${(risk.investedFraction * 100).toFixed(2)}%`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Largest market · cost basis</dt>
+                  <dd>
+                    {pending || risk.largestMarketFraction === null
+                      ? "—"
+                      : `${(risk.largestMarketFraction * 100).toFixed(2)}%`}{" "}
+                    <span>of starting capital</span>
+                  </dd>
+                </div>
+              </dl>
             </section>
           </>
         )}

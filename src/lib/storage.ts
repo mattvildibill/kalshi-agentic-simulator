@@ -2,6 +2,7 @@ import type { MarketTiming } from "./market-timing";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { ledgerIsConsistent } from "./ledger-integrity";
 import {
   createInitialState,
   type LedgerState,
@@ -15,7 +16,12 @@ export interface RunSnapshot {
   marks: Record<string, MarketQuote>;
   marketTimings?: Record<string, MarketTiming>;
   marketTimingRetryAfter?: Record<string, string>;
-  syncRun?: { id: string; pendingTickers: string[]; startedAt: string } | null;
+  syncRun?: {
+    id: string;
+    pendingTickers: string[];
+    checkedTickers?: string[];
+    startedAt: string;
+  } | null;
 }
 export interface RunIdentity {
   id: string;
@@ -144,6 +150,11 @@ function checkSnapshot(snapshot: Snapshot): Snapshot {
       "Stored portfolio is invalid. Restore a verified backup; do not reset it.",
     );
   }
+  if (!ledgerIsConsistent(snapshot.ledger))
+    throw new StorageError(
+      "INVALID_STORED_DATA",
+      "Stored accounting does not reconcile. Restore a verified backup; do not reset the portfolio.",
+    );
   return snapshot;
 }
 async function readRow(): Promise<Row> {
@@ -183,6 +194,7 @@ async function readRow(): Promise<Row> {
       "STORAGE_UNAVAILABLE",
       "Could not initialize portfolio.",
     );
+  checkSnapshot(inserted[0].snapshot);
   return inserted[0];
 }
 const localPath = () => path.join(process.cwd(), ".local", "portfolio.json");
@@ -218,6 +230,7 @@ export async function updateSnapshot<T>(
   if (mode === "local") {
     const operation = localQueue.then(async () => {
       const { snapshot, result } = mutate(await readLocal());
+      checkSnapshot(snapshot);
       await mkdir(path.dirname(localPath()), { recursive: true });
       const temp = `${localPath()}.${randomUUID()}.tmp`;
       await writeFile(temp, JSON.stringify(snapshot), { mode: 0o600 });
@@ -230,6 +243,7 @@ export async function updateSnapshot<T>(
   for (let attempt = 0; attempt < 8; attempt++) {
     const row = await readRow();
     const { snapshot, result } = mutate(row.snapshot);
+    checkSnapshot(snapshot);
     const response = await rest(`?id=eq.main&revision=eq.${row.revision}`, {
       method: "PATCH",
       body: JSON.stringify({
