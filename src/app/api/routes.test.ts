@@ -155,7 +155,7 @@ describe("authenticated research and trade boundary", () => {
     const result = await instructions(request("/api/blue/instructions"));
     expect(result.status).toBe(200);
     const body = await result.json();
-    expect(body.version).toBe("2026-10-29.1");
+    expect(body.version).toBe("2026-10-29.2");
     expect(body.playbook).toContain("RESEARCH_SUPERSEDED");
     expect(body.strategy).toContain("lowCaseEVcents");
     expect(body.sha256).toBe(
