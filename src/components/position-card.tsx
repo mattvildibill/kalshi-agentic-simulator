@@ -55,11 +55,6 @@ export function PositionCard({
         </span>
       </div>
       <h3>{p.title}</h3>
-      <p className="fill-date">Paper fill · {date(p.createdAt)}</p>
-      <p className="position-choice">
-        Your outcome: <strong>{p.side === "yes" ? "Yes" : "No"}</strong> on this
-        question.
-      </p>
       <dl className="bet-amounts">
         <div>
           <dt>Stake · fees included</dt>
@@ -86,47 +81,35 @@ export function PositionCard({
           </dd>
         </div>
       </dl>
-      {!settled && (
-        <p className="bet-note">
-          A full loss costs {money(p.costCents)}. Partial payouts follow the
-          market rules. This is not a cash-out value.
-        </p>
-      )}
       <PositionTiming position={p} demo={demo} runId={runId} />
-      {research ? (
-        <>
-          <div className="bet-forecast">
-            <strong>
-              {percent(research.probability)} estimated chance of{" "}
-              {p.side.toUpperCase()}
-            </strong>
-            <span>
-              {percent(research.probabilityLow)}–
-              {percent(research.probabilityHigh)} uncertainty range
-            </span>
-          </div>
-          <p className="bet-note">
-            Original entry forecast · {date(research.evidenceAsOf)}. Research
-            estimate, not a verified confidence score or current forecast.
-          </p>
-        </>
-      ) : (
-        <p className="bet-note">
-          Entry research unavailable. No forecast inferred.
-        </p>
+      {research && (
+        <div className="bet-forecast">
+          <span>Entry estimate</span>
+          <strong>
+            {percent(research.probability)} {p.side.toUpperCase()}
+          </strong>
+          <span>
+            {percent(research.probabilityLow)}–
+            {percent(research.probabilityHigh)} range
+          </span>
+        </div>
       )}
       <details className="position-analysis">
-        <summary>Reasoning, sizing & market rules</summary>
+        <summary>Analysis & fill details</summary>
         <p className="bet-note">
           This fill used{" "}
           {initialCashCents > 0
             ? `${((p.costCents / initialCashCents) * 100).toFixed(2)}% of starting capital`
             : "an unrecorded share of starting capital"}
-          . Each fill is shown separately; repeated markets are not additional
-          independent bets.
+          . {p.quantity.toLocaleString("en-US")} contracts at {p.priceCents}¢,
+          including {money(p.feeCents)} in modeled fees.
         </p>
         {research && (
           <>
+            <p className="bet-note">
+              Entry forecast · evidence as of {date(research.evidenceAsOf)}.
+              Range represents uncertainty in the estimate.
+            </p>
             <h4>Reasoning</h4>
             <ResearchText text={research.thesis} />
             <h4>Counterarguments & uncertainty</h4>
@@ -136,11 +119,6 @@ export function PositionCard({
             <h4>Resolution rules</h4>
             <ResearchText text={research.resolutionCriteria} />
             <h4>Sources</h4>
-            <p className="bet-note">
-              Source quality is not scored. Check the publisher, date, and
-              whether it directly supports the claim; source count is not
-              confidence.
-            </p>
             <ul className="position-sources">
               {research.sources.map((source, i) => (
                 <li key={i}>
@@ -163,6 +141,13 @@ export function PositionCard({
               <pre>{JSON.stringify(research, null, 2)}</pre>
             </details>
           </>
+        )}
+        {!research && <p className="bet-note">Entry research unavailable.</p>}
+        {!settled && (
+          <p className="bet-note">
+            Full loss: {money(p.costCents)}. Partial payouts follow market
+            rules; potential payout is not a cash-out value.
+          </p>
         )}
         <details className="technical-details">
           <summary>Fill details</summary>

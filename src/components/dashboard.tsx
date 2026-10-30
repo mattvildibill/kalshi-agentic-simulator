@@ -155,7 +155,6 @@ function ResearchCard({
             <span>{date(item.createdAt)}</span>
           </div>
           <h3>{item.title}</h3>
-          <span className="market-ticker">{item.ticker}</span>
         </div>
         <div className="research-probability">
           <span className="eyebrow">Estimated {item.side}</span>
@@ -198,10 +197,6 @@ function ResearchCard({
           </div>
           <div className="detail-sources">
             <span className="eyebrow">Sources & evidence</span>
-            <p className="evidence-time">
-              Source quality is not scored. Check publisher, date, and direct
-              support for each claim; source count is not confidence.
-            </p>
             <div className="source-list">
               {item.sources.map((source, index) => {
                 const href = safeSource(source.url);
@@ -446,7 +441,6 @@ export default function Dashboard({ data }: { data: DashboardData }) {
               Last settlement check:{" "}
               {unavailable ? "Unavailable" : date(data.lastSyncAt, true)}
             </span>
-            <span>Updated during reviews</span>
           </div>
 
           <section className="metrics-grid" aria-label="Portfolio summary">

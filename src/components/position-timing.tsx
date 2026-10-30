@@ -97,88 +97,149 @@ export function PositionTiming({
     };
   }, [p.ticker, p.marketTiming, demo, runId]);
   const format = (value?: string | null) => formatSchedule(value, timezone);
-  const unavailable = !timing;
+  const validDate = (value?: string | null) =>
+    Boolean(value && Number.isFinite(Date.parse(value)));
+  const closesAt = timing ? timing.closesAt : p.closesAt;
+  const primaryDate =
+    p.status === "settled"
+      ? p.settledAt
+      : validDate(timing?.expectedResultAt)
+        ? timing?.expectedResultAt
+        : closesAt;
+  const primaryLabel =
+    p.status === "settled"
+      ? "Settlement recorded"
+      : validDate(timing?.expectedResultAt)
+        ? "Expected result · estimated"
+        : "Trading closes · result time unavailable";
+  const compactDate = (value: string) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: timezone,
+      timeZoneName: "short",
+    }).format(new Date(value));
+  const ledgerDate = (value?: string | null) =>
+    validDate(value) ? format(value) : "Not recorded";
   return (
     <section className="position-timing" aria-label="Market schedule">
-      <div className="timing-controls">
-        <span>Times: {timezone}</span>
-        {localZone !== "UTC" && (
-          <button
-            type="button"
-            onClick={() => setTimezone(timezone === "UTC" ? localZone : "UTC")}
-          >
-            {timezone === "UTC" ? "Use local time" : "Use UTC"}
-          </button>
+      <p className="timing-primary">
+        {validDate(primaryDate) ? (
+          <>
+            <span>{primaryLabel}</span>{" "}
+            <time dateTime={primaryDate!} title={format(primaryDate)}>
+              {compactDate(primaryDate!)}
+            </time>
+          </>
+        ) : (
+          <span>
+            {p.status === "settled"
+              ? "Settlement date not recorded"
+              : loading
+                ? "Loading schedule…"
+                : "Result time unavailable"}
+          </span>
         )}
-      </div>
-      <dl className="bet-timing">
-        <div>
-          <dt>Trading closes · scheduled</dt>
-          <dd>{format(timing ? timing.closesAt : p.closesAt)}</dd>
-        </div>
-        <div>
-          <dt>Expected result · estimate</dt>
-          <dd>
-            {unavailable
-              ? loading
-                ? "Loading official schedule…"
-                : "Schedule unavailable"
-              : format(timing.expectedResultAt)}
-          </dd>
-        </div>
-        <div>
-          <dt>Latest expiration</dt>
-          <dd>
-            {unavailable
-              ? loading
-                ? "Loading official schedule…"
-                : "Schedule unavailable"
-              : format(timing.latestExpirationAt)}
-          </dd>
-        </div>
-        {timing?.exchangeSettledAt && (
-          <div>
-            <dt>Exchange settled</dt>
-            <dd>{format(timing.exchangeSettledAt)}</dd>
-          </div>
-        )}
-        {p.status === "settled" && (
-          <div>
-            <dt>Recorded in paper ledger</dt>
-            <dd>{format(p.settledAt)}</dd>
-          </div>
-        )}
-      </dl>
-      <p className="bet-note">
-        Expected result is an estimate. Latest expiration is not a guaranteed
-        payout deadline; disputes and settlement processing may delay funds.
       </p>
-      {timing && (
-        <p className="bet-note">
-          Schedule checked {format(timing.observedAt)}
-          {stale ? " · stale" : ""}
-          {timing.latestExpirationSource === "expiration_time"
-            ? " · latest expiration uses Kalshi’s legacy field"
-            : ""}
-          .{" "}
-          <a href={timing.sourceUrl} target="_blank" rel="noopener noreferrer">
-            {demo ? "Timing field definitions" : "Official market"}
-          </a>
+      {error ? (
+        <p className="timing-error" role="status">
+          Schedule refresh unavailable{timing ? " · showing saved dates" : ""}.
         </p>
+      ) : (
+        stale &&
+        timing && (
+          <p className="timing-error" role="status">
+            Saved schedule · may be outdated.
+          </p>
+        )
       )}
       {timing?.exchangeSettledAt && p.status === "open" && (
+        <p className="bet-note">Exchange settled · portfolio update pending.</p>
+      )}
+      <details className="timing-details">
+        <summary>Dates</summary>
+        <div className="timing-controls">
+          <span>Times: {timezone}</span>
+          {localZone !== "UTC" && (
+            <button
+              type="button"
+              onClick={() =>
+                setTimezone(timezone === "UTC" ? localZone : "UTC")
+              }
+            >
+              {timezone === "UTC" ? "Use local time" : "Use UTC"}
+            </button>
+          )}
+        </div>
+        <dl className="bet-timing">
+          <div>
+            <dt>Entered</dt>
+            <dd>{ledgerDate(p.createdAt)}</dd>
+          </div>
+          <div>
+            <dt>Trading closes · scheduled</dt>
+            <dd>{format(closesAt)}</dd>
+          </div>
+          <div>
+            <dt>Expected result · estimate</dt>
+            <dd>
+              {timing
+                ? format(timing.expectedResultAt)
+                : "Schedule unavailable"}
+            </dd>
+          </div>
+          <div>
+            <dt>Latest expiration</dt>
+            <dd>
+              {timing
+                ? format(timing.latestExpirationAt)
+                : "Schedule unavailable"}
+            </dd>
+          </div>
+          <div>
+            <dt>Exchange settled</dt>
+            <dd>
+              {timing?.exchangeSettledAt
+                ? format(timing.exchangeSettledAt)
+                : "Not recorded"}
+            </dd>
+          </div>
+          <div>
+            <dt>Recorded in paper ledger</dt>
+            <dd>
+              {p.status === "settled" ? ledgerDate(p.settledAt) : "Not settled"}
+            </dd>
+          </div>
+          <div>
+            <dt>Schedule checked</dt>
+            <dd>
+              {timing ? format(timing.observedAt) : ledgerDate(p.timingAsOf)}
+              {stale && timing ? " · stale" : ""}
+            </dd>
+          </div>
+        </dl>
         <p className="bet-note">
-          Exchange finalized; paper portfolio settlement pending.
+          Expected result is an estimate. Latest expiration is not a guaranteed
+          payout deadline; disputes and settlement processing may delay funds.
         </p>
-      )}
-      {error && (
-        <p className="timing-error" role="status">
-          Schedule refresh unavailable.{" "}
-          {timing
-            ? "Showing the previously recorded schedule."
-            : "No result time inferred."}
-        </p>
-      )}
+        {timing?.latestExpirationSource === "expiration_time" && (
+          <p className="bet-note">
+            Latest expiration uses Kalshi’s legacy field.
+          </p>
+        )}
+        {timing && (
+          <a
+            className="timing-source"
+            href={timing.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {demo ? "Timing field definitions" : "Official market"}
+          </a>
+        )}
+      </details>
     </section>
   );
 }

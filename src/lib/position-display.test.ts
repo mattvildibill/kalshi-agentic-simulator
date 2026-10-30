@@ -34,7 +34,7 @@ describe("position presentation", () => {
     expect(html).toContain("$100.00");
     expect(html).toContain("$58.32");
     expect(html).not.toContain("$43.36");
-    expect(html).toContain("No</strong>");
+    expect(html).toContain('class="side-badge no">no</span>');
     expect(html).toContain("Entry research unavailable");
   });
   it("uses recorded scalar payout and profit, not binary win assumptions", () => {
