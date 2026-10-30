@@ -47,12 +47,14 @@ export default function Methodology() {
         Quotes expire after 60 seconds. Research and its evidence timestamp
         expire for trading after 24 hours; fast-moving events may need much
         shorter windows, which Blue must assess. Total open cost in one market
-        is limited to 2% of the initial bankroll, and in one Kalshi event to
-        10%. Blue must assess correlations across different events separately. A
-        market accepts at most one new paper fill per 60 seconds, across both
-        sides, to limit reuse of observed liquidity. The simulator cannot
-        borrow. Positive expected value depends on the submitted probability;
-        the software cannot establish that the forecast is correct.
+        is limited to 10% of the initial bankroll ($10,000 on $100,000),
+        including fees across all open fills and both sides. The same $10,000
+        limit applies across markets in one Kalshi event. Blue must assess
+        correlations across different events separately. A market accepts at
+        most one new paper fill per 60 seconds, across both sides, to limit
+        reuse of observed liquidity. The simulator cannot borrow. Positive
+        expected value depends on the submitted probability; the software cannot
+        establish that the forecast is correct.
       </p>
       <h2>Settlement and accounting</h2>
       <p>
