@@ -199,7 +199,7 @@ input,
 main {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 28px 36px 0;
+  padding: 20px 28px 0;
 }
 .page-heading {
   display: flex;
@@ -222,7 +222,7 @@ h1 {
   align-items: center;
   gap: 8px 16px;
   flex-wrap: wrap;
-  margin: 10px 0 24px;
+  margin: 8px 0 16px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -276,7 +276,7 @@ h1 {
   background: white;
 }
 .metric-card {
-  padding: 22px;
+  padding: 16px;
 }
 .metric-top {
   display: flex;
@@ -299,7 +299,7 @@ h1 {
 }
 .metric-value {
   display: block;
-  margin: 12px 0 8px;
+  margin: 8px 0 4px;
   font-size: clamp(25px, 2.5vw, 36px);
   font-weight: 500;
   letter-spacing: -1px;
@@ -318,7 +318,7 @@ h1 {
 }
 .journal-section,
 .positions-section {
-  padding-top: 32px;
+  padding-top: 24px;
 }
 .section-heading {
   display: flex;
@@ -1031,7 +1031,8 @@ td strong {
 .position-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  align-items: start;
+  gap: 12px;
 }
 .positions-panel {
   background: transparent;
@@ -1043,14 +1044,14 @@ td strong {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 22px;
+  padding: 16px;
 }
 .position-card-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 .position-status,
 .fill-date {
@@ -1061,8 +1062,8 @@ td strong {
   margin-top: 6px;
 }
 .position-card h3 {
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.4;
 }
 .position-choice {
   margin-top: 12px;
@@ -1072,8 +1073,8 @@ td strong {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  margin: 20px 0 12px;
-  padding: 16px 0;
+  margin: 12px 0;
+  padding: 10px 0;
   border-block: 1px solid var(--line);
 }
 .bet-amounts dt {
@@ -1081,8 +1082,8 @@ td strong {
   color: var(--muted);
 }
 .bet-amounts dd {
-  margin: 8px 0 0;
-  font-size: 21px;
+  margin: 4px 0 0;
+  font-size: 20px;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
@@ -1113,27 +1114,24 @@ td strong {
 }
 .bet-forecast {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-top: 1px solid var(--line);
-  margin-top: 18px;
-  padding-top: 16px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--muted);
 }
 .bet-forecast strong {
-  font-size: 15px;
-  font-weight: 600;
-}
-.bet-forecast span {
   font-size: 13px;
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--ink);
 }
 .position-analysis {
   border-top: 1px solid var(--line);
-  margin-top: 18px;
+  margin-top: 10px;
 }
 .position-analysis > summary {
-  padding: 14px 0 0;
+  padding: 10px 0 0;
   color: var(--blue);
   cursor: pointer;
   font-size: 14px;
@@ -1199,10 +1197,13 @@ td strong {
 }
 @media (max-width: 540px) {
   .position-card {
-    padding: 18px 16px;
+    padding: 14px;
   }
   .bet-amounts {
     gap: 10px;
+  }
+  .bet-amounts dt {
+    min-height: 36px;
   }
   .bet-amounts dd {
     font-size: 18px;
@@ -1240,4 +1241,52 @@ td strong {
   font-size: 12px;
   color: #845514;
   margin-top: 8px;
+}
+
+.timing-primary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.timing-primary time {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.timing-details > summary {
+  cursor: pointer;
+  color: var(--blue);
+  font-size: 12px;
+  padding: 6px 0;
+}
+.timing-details[open] {
+  padding-bottom: 10px;
+}
+.timing-details .bet-timing {
+  margin: 8px 0;
+}
+.timing-source {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+@media (max-width: 360px) {
+  .bet-amounts {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .bet-amounts > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .bet-amounts dt {
+    min-height: 0;
+  }
+  .bet-amounts dd {
+    margin: 0;
+    white-space: nowrap;
+  }
 }
