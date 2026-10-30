@@ -21,7 +21,6 @@ describe("durable portfolio storage", () => {
   it("reapplies a mutation to the newest portfolio after a concurrent write wins", async () => {
     let revision = 0;
     let snapshot = initialSnapshot();
-    snapshot.ledger.cashCents = 1000;
     let raced = false;
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method !== "PATCH")
@@ -34,7 +33,7 @@ describe("durable portfolio storage", () => {
         revision++;
         snapshot = {
           ...snapshot,
-          ledger: { ...snapshot.ledger, cashCents: 800 },
+          lastSyncAt: "2026-10-29T12:00:00Z",
         };
       }
       if (expectedRevision !== revision) return Response.json([]);
@@ -47,21 +46,18 @@ describe("durable portfolio storage", () => {
       return Response.json([{ id: "main", revision, snapshot }]);
     });
     vi.stubGlobal("fetch", fetchMock);
-    const balancesSeen: number[] = [];
+    const observations: (string | null)[] = [];
     const balance = await updateSnapshot((current) => {
-      balancesSeen.push(current.ledger.cashCents);
+      observations.push(current.lastSyncAt);
       const next = {
         ...current,
-        ledger: {
-          ...current.ledger,
-          cashCents: current.ledger.cashCents - 100,
-        },
+        lastSyncAt: "2026-10-29T12:01:00Z",
       };
-      return { snapshot: next, result: next.ledger.cashCents };
+      return { snapshot: next, result: next.lastSyncAt };
     });
-    expect(balancesSeen).toEqual([1000, 800]);
-    expect(balance).toBe(700);
-    expect(snapshot.ledger.cashCents).toBe(700);
+    expect(observations).toEqual([null, "2026-10-29T12:00:00Z"]);
+    expect(balance).toBe("2026-10-29T12:01:00Z");
+    expect(snapshot.ledger.cashCents).toBe(10000000);
     expect(revision).toBe(2);
   });
 
@@ -110,7 +106,7 @@ describe("durable portfolio storage", () => {
 
   it("preserves another initializer’s portfolio when the initial insert races", async () => {
     const existing = initialSnapshot();
-    existing.ledger.cashCents = 9_999_123;
+    existing.lastSyncAt = "2026-10-29T12:00:00Z";
     let reads = 0;
     vi.stubGlobal(
       "fetch",
@@ -122,7 +118,27 @@ describe("durable portfolio storage", () => {
         );
       }),
     );
-    expect((await readSnapshot()).ledger.cashCents).toBe(9_999_123);
+    expect((await readSnapshot()).lastSyncAt).toBe("2026-10-29T12:00:00Z");
+  });
+
+  it("refuses inconsistent accounting both on read and before a write", async () => {
+    const snapshot = initialSnapshot();
+    const fetcher = vi.fn(async () =>
+      Response.json([{ id: "main", revision: 0, snapshot }]),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      updateSnapshot((current) => ({
+        snapshot: { ...current, ledger: { ...current.ledger, cashCents: 1 } },
+        result: true,
+      })),
+    ).rejects.toMatchObject({ code: "INVALID_STORED_DATA" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    snapshot.ledger.cashCents = 1;
+    await expect(readSnapshot()).rejects.toMatchObject({
+      code: "INVALID_STORED_DATA",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("returns an explicit conflict instead of claiming an uncommitted update succeeded", async () => {

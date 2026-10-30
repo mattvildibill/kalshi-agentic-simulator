@@ -1,4 +1,95 @@
 import { test, expect } from "@playwright/test";
+
+test("refresh keeps filters, exposes sync failures, and retains the last readable portfolio", async ({
+  page,
+}) => {
+  const baseline = await (await page.request.get("/api/portfolio")).json();
+  const fixture = {
+    ...baseline,
+    mode: "local",
+    cashCents: 9999900,
+    syncErrors: [] as { ticker: string; message: string }[],
+  };
+  let fail = false;
+  await page.route("**/api/portfolio", (route) =>
+    route.fulfill({
+      status: fail ? 503 : 200,
+      json: fail ? { ...fixture, mode: "unavailable", cashCents: 0 } : fixture,
+    }),
+  );
+  await page.goto("/#research");
+  await page.getByRole("searchbox").fill("keep this search");
+  const refresh = page.getByRole("button", { name: "Refresh portfolio" });
+  await refresh.click();
+  await expect(page.locator(".metric").last()).toContainText("$99,999.00");
+  await expect(page.getByRole("searchbox")).toHaveValue("keep this search");
+  fixture.syncErrors = [
+    { ticker: "TEST-MARKET", message: "Official quote unavailable" },
+  ];
+  await refresh.click();
+  await expect(
+    page.getByText("Market review needs attention", { exact: true }),
+  ).toBeVisible();
+  await page.getByText("Show affected markets", { exact: true }).click();
+  await expect(
+    page.getByText("TEST-MARKET: Official quote unavailable"),
+  ).toBeVisible();
+  fail = true;
+  await refresh.click();
+  await expect(
+    page.getByText("Portfolio refresh unavailable", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".metric").last()).toContainText("$99,999.00");
+});
+
+test("automatic refresh pauses in hidden tabs and resumes without writes", async ({
+  page,
+}) => {
+  const fixture = await (await page.request.get("/api/portfolio")).json();
+  fixture.mode = "local";
+  let reads = 0;
+  await page.route("**/api/portfolio", (route) => {
+    reads++;
+    return route.fulfill({ json: fixture });
+  });
+  await page.clock.install();
+  await page.goto("/");
+  const refresh = page.getByRole("button", { name: "Refresh portfolio" });
+  await refresh.click();
+  await expect.poll(() => reads).toBe(1);
+  await expect(refresh).toBeEnabled();
+  reads = 0;
+  await page.evaluate(() =>
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    }),
+  );
+  await page.clock.fastForward(5 * 60000 + 1);
+  expect(reads).toBe(0);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect.poll(() => reads).toBe(1);
+});
+
+test("demo remains isolated from portfolio refresh", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/portfolio")) requests.push(r.url());
+  });
+  await page.clock.install();
+  await page.goto("/demo");
+  await page.clock.fastForward(10 * 60000);
+  await expect(
+    page.getByRole("button", { name: "Refresh portfolio" }),
+  ).toHaveCount(0);
+  expect(requests).toEqual([]);
+});
 test("actual portfolio separates its data from the fictional preview", async ({
   page,
 }) => {
@@ -161,13 +252,13 @@ test("opportunities, category filters and activity links open recorded research"
   await expect(
     page.getByRole("heading", { name: "Find the next opportunity" }),
   ).toBeVisible();
-  await expect(page.locator(".opportunity-card")).toHaveCount(3);
+  await expect(page.locator(".opportunity-card")).toHaveCount(2);
   await page.getByRole("button", { name: "Economics", exact: true }).click();
   await expect(page.locator(".opportunity-card")).toHaveCount(1);
   await page.getByRole("searchbox").fill("does-not-exist");
   await expect(page.getByText("No matching opportunities")).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
-  await expect(page.locator(".opportunity-card")).toHaveCount(3);
+  await expect(page.locator(".opportunity-card")).toHaveCount(2);
   await page.getByRole("button", { name: "View research" }).first().click();
   await expect(page.getByRole("dialog")).toContainText("The counterargument");
   await page.keyboard.press("Escape");

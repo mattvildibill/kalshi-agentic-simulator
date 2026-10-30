@@ -20,6 +20,7 @@ export type DashboardResearch = {
 export type DashboardPosition = {
   id: string;
   researchId: string;
+  eventTicker?: string;
   ticker: string;
   title: string;
   side: "yes" | "no";
@@ -51,6 +52,10 @@ export type DashboardData = {
   winRate: number | null;
   lastActivityAt: string | null;
   lastSyncAt: string | null;
+  observedAt?: string;
+  syncErrors?: { ticker: string; message: string }[];
+  syncInProgress?: boolean;
+  pendingSyncMarkets?: number;
   research: DashboardResearch[];
   positions: DashboardPosition[];
   activity: {

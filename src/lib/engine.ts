@@ -368,6 +368,14 @@ export function executeTrade(
       "RESEARCH_REQUIRED",
       "A matching trade recommendation for this market and side is required.",
     );
+  const latestResearch = state.research.findLast(
+    (item) => item.ticker === input.ticker && item.side === input.side,
+  );
+  if (latestResearch?.id !== research.id)
+    fail(
+      "RESEARCH_SUPERSEDED",
+      "This forecast has been superseded. Use the latest published decision for this market and side.",
+    );
   fresh(research.createdAt, "Research", nowMs, MAX_RESEARCH_AGE_MS);
   fresh(research.evidenceAsOf, "Evidence", nowMs, MAX_RESEARCH_AGE_MS);
   const ask = input.side === "yes" ? quote.yesAskCents : quote.noAskCents;

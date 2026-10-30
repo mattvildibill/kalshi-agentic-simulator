@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/api/blue/instructions": ["./docs/BLUE.md", "./docs/STRATEGY.md"],
+  },
   allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [

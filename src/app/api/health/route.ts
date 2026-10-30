@@ -1,4 +1,5 @@
 import { RISK_POLICY } from "@/lib/engine";
+import { RESEARCH_POLICY_VERSION } from "@/lib/research-policy";
 import { response } from "@/lib/http";
 import { readSnapshot, storageMode } from "@/lib/storage";
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ export async function GET() {
       status: database && blueConfigured ? "ready" : "setup_required",
       paperOnly: true,
       riskPolicy: RISK_POLICY,
+      researchPolicyVersion: RESEARCH_POLICY_VERSION,
+      researchInstructionsPath: "/api/blue/instructions",
       storage,
       database,
       blueConfigured,

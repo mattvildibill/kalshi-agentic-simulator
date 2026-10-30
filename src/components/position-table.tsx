@@ -72,6 +72,9 @@ export function PositionTable({
                     {settled ? outcome : research?.category || "Uncategorized"}
                   </span>
                   <span>{p.quantity.toLocaleString("en-US")} contracts</span>
+                  <span className="mobile-invested">
+                    {money(p.costCents)} invested
+                  </span>
                 </div>
               </td>
               <td className="position-price-cell" data-label="Entry → last bid">

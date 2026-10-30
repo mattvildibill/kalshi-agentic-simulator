@@ -75,7 +75,7 @@ export async function POST(request: Request) {
                 return {
                   ticker,
                   timing,
-                  quote: (await getQuote(ticker)).quote,
+                  quote: (await getQuote(ticker, market)).quote,
                 };
               return { ticker, timing };
             } catch (error) {
@@ -141,9 +141,22 @@ export async function POST(request: Request) {
           }
         }
       }
-      const remaining = snapshot.syncRun.pendingTickers.filter(
-        (t) => !work.batch.includes(t),
-      );
+      const checkedTickers = [
+        ...new Set([...(snapshot.syncRun.checkedTickers ?? []), ...work.batch]),
+      ];
+      // Trades accepted while upstream reads were in flight must join this run.
+      const remaining = [
+        ...new Set([
+          ...snapshot.syncRun.pendingTickers.filter(
+            (t) => !work.batch.includes(t),
+          ),
+          ...ledger.trades
+            .filter(
+              (t) => t.status === "open" && !checkedTickers.includes(t.ticker),
+            )
+            .map((t) => t.ticker),
+        ]),
+      ];
       const nextCursor = remaining.length ? work.id : null;
       const complete = nextCursor === null && errors.length === 0;
       const now = new Date().toISOString();
@@ -156,7 +169,7 @@ export async function POST(request: Request) {
           lastSyncErrors: errors,
           lastSyncAt: complete ? now : snapshot.lastSyncAt,
           syncRun: remaining.length
-            ? { ...snapshot.syncRun, pendingTickers: remaining }
+            ? { ...snapshot.syncRun, pendingTickers: remaining, checkedTickers }
             : null,
         },
         result: {

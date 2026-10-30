@@ -5,6 +5,8 @@ import {
   portfolioValues,
   positionValue,
   realizedHistory,
+  researchShortlist,
+  portfolioRisk,
 } from "./dashboard-display";
 import { initialSnapshot } from "./storage";
 import type { Trade } from "./engine";
@@ -16,6 +18,57 @@ const marked = {
   markPriceCents: 50,
   markAsOf: "2026-10-29T12:00:00Z",
 };
+
+it("shortlists only latest, fresh, unsettled decisions while retaining the journal", () => {
+  const item = data.research.find((r) => r.decision === "trade")!;
+  const older = {
+    ...item,
+    id: "older",
+    createdAt: "2026-10-29T10:00:00Z",
+    evidenceAsOf: "2026-10-29T09:00:00Z",
+  };
+  const newer = {
+    ...older,
+    id: "newer",
+    createdAt: "2026-10-29T11:00:00Z",
+    decision: "pass" as const,
+  };
+  const live = {
+    ...data,
+    mode: "live" as const,
+    observedAt: "2026-10-29T12:00:00Z",
+    positions: [],
+    research: [newer, older],
+  };
+  expect(researchShortlist(live)).toEqual([]);
+  expect(researchShortlist({ ...live, research: [older] })).toEqual([older]);
+  expect(
+    researchShortlist({
+      ...live,
+      research: [older],
+      observedAt: "2026-10-31T12:00:00Z",
+    }),
+  ).toEqual([]);
+  expect(
+    researchShortlist({
+      ...live,
+      research: [older],
+      positions: [{ ...position, ticker: older.ticker, status: "settled" }],
+    }),
+  ).toEqual([]);
+  expect(live.research).toHaveLength(2);
+});
+it("counts distinct markets and aggregates repeated-fill gross exposure", () => {
+  const result = portfolioRisk({
+    ...data,
+    positions: [marked, { ...marked, id: "repeat" }],
+    committedCents: marked.costCents * 2,
+  });
+  expect(result.markets).toBe(1);
+  expect(result.largestMarketFraction).toBe(
+    (marked.costCents * 2) / data.initialCashCents,
+  );
+});
 
 describe("recorded bid valuations", () => {
   it("includes entry fees once in profit and uses the recorded bid for value", () => {

@@ -15,6 +15,7 @@ function PerformanceChart({ data }: { data: DashboardData }) {
   const gradientId = useId();
   const history = realizedHistory(data);
   const dates = [
+    ...(data.mode === "demo" ? [] : [data.observedAt]),
     data.lastActivityAt,
     data.lastSyncAt,
     ...history.map((p) => p.at),
@@ -45,6 +46,15 @@ function PerformanceChart({ data }: { data: DashboardData }) {
           { at: new Date(since).toISOString(), profitCents: before },
           ...visible,
         ];
+  if (
+    latest !== null &&
+    points.length &&
+    Date.parse(points.at(-1)!.at) < latest
+  )
+    points.push({
+      at: new Date(latest).toISOString(),
+      profitCents: history.at(-1)?.profitCents ?? before,
+    });
   const low = Math.min(0, ...points.map((p) => p.profitCents));
   const high = Math.max(0, ...points.map((p) => p.profitCents));
   const spread = high - low || 100;
@@ -259,7 +269,7 @@ export function PortfolioOverview({
           )}
         </div>
         <div className="shortlist-foot">
-          Latest decision per market · estimates, not guarantees
+          Recent, unsettled research · estimates, not guarantees
         </div>
       </section>
     </div>

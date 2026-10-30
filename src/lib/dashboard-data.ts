@@ -44,6 +44,10 @@ export function projectDashboard(
       : null,
     lastActivityAt: activity[0]?.createdAt ?? null,
     lastSyncAt: snapshot.lastSyncAt,
+    observedAt: new Date().toISOString(),
+    syncErrors: snapshot.lastSyncErrors,
+    syncInProgress: Boolean(snapshot.syncRun),
+    pendingSyncMarkets: snapshot.syncRun?.pendingTickers.length ?? 0,
     research: [...state.research]
       .reverse()
       .map(
