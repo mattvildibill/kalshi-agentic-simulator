@@ -650,6 +650,19 @@ describe("automatic held-market refresh", () => {
     await publicPortfolio();
     expect(getMarket).toHaveBeenCalledTimes(2);
   });
+  it("keeps a one-minute cadence even when the previous upstream check took time", async () => {
+    vi.mocked(getMarket).mockImplementationOnce(async () => {
+      vi.setSystemTime(new Date(Date.parse(now) + 2000));
+      return market();
+    });
+    await publicPortfolio();
+    expect(snapshot.lastSyncAt).toBe(
+      new Date(Date.parse(now) + 2000).toISOString(),
+    );
+    vi.setSystemTime(new Date(Date.parse(now) + 60001));
+    await publicPortfolio();
+    expect(getMarket).toHaveBeenCalledTimes(2);
+  });
   it("settles finalized wins exactly once across repeat and concurrent visitors", async () => {
     const cashBefore = snapshot.ledger.cashCents;
     vi.mocked(getMarket).mockResolvedValue(

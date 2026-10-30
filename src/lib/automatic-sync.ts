@@ -19,7 +19,9 @@ function due(snapshot: Snapshot, now: number) {
   )
     return false;
   return (
-    Boolean(snapshot.syncRun) ||
+    // Measure our polling cadence from request start, so upstream latency
+    // does not make every other one-minute browser check skip a refresh.
+    Boolean(automatic || snapshot.syncRun) ||
     !snapshot.lastSyncAt ||
     now - Date.parse(snapshot.lastSyncAt) >= AUTOMATIC_SYNC_INTERVAL_MS
   );
