@@ -28,7 +28,7 @@ test("refresh keeps filters, exposes sync failures, and retains the last readabl
   ];
   await refresh.click();
   await expect(
-    page.getByText("Market review needs attention", { exact: true }),
+    page.getByText("Market update needs attention", { exact: true }),
   ).toBeVisible();
   await page.getByText("Show affected markets", { exact: true }).click();
   await expect(
@@ -42,7 +42,7 @@ test("refresh keeps filters, exposes sync failures, and retains the last readabl
   await expect(page.locator(".metric").last()).toContainText("$99,999.00");
 });
 
-test("automatic refresh pauses in hidden tabs and resumes without writes", async ({
+test("automatic refresh checks every minute, pauses in hidden tabs and resumes", async ({
   page,
 }) => {
   const fixture = await (await page.request.get("/api/portfolio")).json();
@@ -58,6 +58,8 @@ test("automatic refresh pauses in hidden tabs and resumes without writes", async
   await refresh.click();
   await expect.poll(() => reads).toBe(1);
   await expect(refresh).toBeEnabled();
+  await page.clock.fastForward(60001);
+  await expect.poll(() => reads).toBe(2);
   reads = 0;
   await page.evaluate(() =>
     Object.defineProperty(document, "visibilityState", {
@@ -75,6 +77,67 @@ test("automatic refresh pauses in hidden tabs and resumes without writes", async
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect.poll(() => reads).toBe(1);
+});
+
+test("an automatic finalized result moves a position to settled and updates cash", async ({
+  page,
+}) => {
+  const baseline = await (await page.request.get("/api/portfolio")).json();
+  const position = {
+    id: "automatic-browser-fixture",
+    researchId: "fixture-research",
+    ticker: "TEST-AUTOMATIC",
+    title: "Automatic settlement browser fixture",
+    side: "yes",
+    quantity: 10,
+    priceCents: 40,
+    feeCents: 0,
+    costCents: 400,
+    status: "open",
+    payoutCents: null as number | null,
+    profitCents: null as number | null,
+    createdAt: new Date().toISOString(),
+    settledAt: null as string | null,
+    markPriceCents: 99,
+    markAsOf: new Date().toISOString(),
+  };
+  const fixture = {
+    ...baseline,
+    mode: "local",
+    cashCents: 9999600,
+    openPositions: 1,
+    settledPositions: 0,
+    committedCents: 400,
+    positions: [position],
+    research: [],
+    activity: [],
+    syncErrors: [],
+  };
+  await page.route("**/api/portfolio", (route) =>
+    route.fulfill({ json: fixture }),
+  );
+  await page.clock.install();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Refresh portfolio" }).click();
+  await expect(
+    page.getByRole("button", { name: "Open 1", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".market-title")).toContainText(position.title);
+  fixture.cashCents += 1000;
+  fixture.openPositions = 0;
+  fixture.settledPositions = 1;
+  fixture.committedCents = 0;
+  position.status = "settled";
+  position.payoutCents = 1000;
+  position.profitCents = 600;
+  position.settledAt = new Date().toISOString();
+  await page.clock.fastForward(60001);
+  await expect(
+    page.getByText("No open positions", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".metric").last()).toContainText("$100,006.00");
+  await page.getByRole("button", { name: "Settled 1", exact: true }).click();
+  await expect(page.locator(".market-title")).toContainText(position.title);
 });
 
 test("demo remains isolated from portfolio refresh", async ({ page }) => {

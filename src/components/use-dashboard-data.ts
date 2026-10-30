@@ -22,7 +22,7 @@ export function useDashboardData(initial: DashboardData) {
         redirect: "error",
         signal: AbortSignal.any([
           controller.signal,
-          AbortSignal.timeout(15000),
+          AbortSignal.timeout(60000),
         ]),
       });
       const next: DashboardData = await response.json();
@@ -61,7 +61,7 @@ export function useDashboardData(initial: DashboardData) {
       )
         void refresh();
     };
-    const interval = window.setInterval(check, 5 * 60000);
+    const interval = window.setInterval(check, 60000);
     window.addEventListener("focus", check);
     document.addEventListener("visibilitychange", check);
     return () => {

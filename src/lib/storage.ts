@@ -16,6 +16,7 @@ export interface RunSnapshot {
   marks: Record<string, MarketQuote>;
   marketTimings?: Record<string, MarketTiming>;
   marketTimingRetryAfter?: Record<string, string>;
+  automaticSync?: { id: string; startedAt: string; leaseUntil: string };
   syncRun?: {
     id: string;
     pendingTickers: string[];

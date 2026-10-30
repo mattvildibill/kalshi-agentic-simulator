@@ -262,7 +262,7 @@ export default function Dashboard({
           </div>
           <div className="heading-actions">
             <span className="updated">
-              Last completed review ·{" "}
+              Last market update ·{" "}
               {unavailable ? "Unavailable" : date(data.lastSyncAt, true)}
             </span>
             {!demo && (
@@ -302,10 +302,10 @@ export default function Dashboard({
         {(data.syncErrors?.length ?? 0) > 0 && (
           <div className="mode-banner review-banner" role="status">
             <div>
-              <strong>Market review needs attention</strong>
+              <strong>Market update needs attention</strong>
               <span>
                 {data.syncErrors!.length} market updates failed. The last
-                completed review is {date(data.lastSyncAt, true)}.
+                completed market update is {date(data.lastSyncAt, true)}.
               </span>
               <details>
                 <summary>Show affected markets</summary>
@@ -320,9 +320,14 @@ export default function Dashboard({
             </div>
           </div>
         )}
+        {data.marketUpdateError && (
+          <p className="section-note stale-note" role="status">
+            {data.marketUpdateError}
+          </p>
+        )}
         {data.syncInProgress && (
           <p className="section-note" role="status">
-            Review in progress · {data.pendingSyncMarkets ?? 0} markets
+            Market update in progress · {data.pendingSyncMarkets ?? 0} markets
             remaining
           </p>
         )}
@@ -395,14 +400,16 @@ export default function Dashboard({
             {marks.length
               ? `Recorded bids · ${date(marks[0], true)}${date(marks[0], true) !== date(marks.at(-1), true) ? ` – ${date(marks.at(-1), true)}` : ""}`
               : "Market values appear when bids are recorded."}{" "}
-            Updated during reviews.{" "}
+            {demo
+              ? "Illustrative prices."
+              : "Updates automatically about every minute while this page is open."}{" "}
             {refreshedAt && `Portfolio reloaded ${date(refreshedAt, true)}.`}
           </span>
         </div>
         {bidsStale && (
           <p className="section-note stale-note" role="status">
-            Prices are from an earlier review. Values are saved snapshots; Blue
-            must complete a market review to update prices.
+            Prices are from an earlier market update. Automatic checks retry
+            while this page is open; Refresh checks again.
           </p>
         )}
 
