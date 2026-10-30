@@ -16,6 +16,8 @@ A public research journal and $100,000 paper-trading experiment for Matt Vildibi
 
 The production dashboard never substitutes sample data when storage is unavailable. Unconfigured and failed connections are shown explicitly. Open position cost is not market value.
 
+The dashboard uses the supplied Blue UI reference: horizontal navigation, four portfolio metrics, realized-performance chart, compact position tables, and research dialogs. Portfolio value uses timestamped selected-side bids from recorded marks; an incomplete set of bids leaves the total unavailable. The chart includes settled profit only because the ledger does not retain historical market valuations. Opportunities show the latest published trade/watch decision per market and side, without inventing prices or estimated edge. Full entry research, evidence, fill accounting, and local/UTC settlement schedules remain available in market details.
+
 ## Development
 
 Node.js 22+ is required; this environment uses Node.js 24. npm's lockfile pins dependencies.

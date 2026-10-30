@@ -3,9 +3,9 @@ test("actual portfolio separates its data from the fictional preview", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Paper only", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^Paper only\. Each row/)).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Research journal" }),
+    page.getByRole("heading", { name: "Portfolio overview" }),
   ).toBeVisible();
   await expect(
     page.getByText("Illustrative preview", { exact: true }),
@@ -26,7 +26,7 @@ test("research filters, evidence expansion, and settlement history work", async 
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/demo");
+  await page.goto("/demo#research");
   await expect(page.locator(".research-card")).toHaveCount(4);
   await page.getByRole("button", { name: /Watching 1/ }).click();
   await expect(page.locator(".research-card")).toHaveCount(1);
@@ -45,9 +45,15 @@ test("research filters, evidence expansion, and settlement history work", async 
   await expect(
     page.getByRole("link", { name: /Illustrative source/ }),
   ).toHaveAttribute("href", "https://www.bls.gov/cpi/");
+  await page.getByRole("button", { name: "Close market detail" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Overview", exact: true })
+    .click();
   await page.getByRole("button", { name: "Settled 1", exact: true }).click();
+  await page.locator(".market-title").click();
   await expect(
-    page.getByText("Net profit / loss", { exact: true }),
+    page.getByRole("dialog").getByText("Net profit / loss", { exact: true }),
   ).toBeVisible();
   await expect(
     page
@@ -73,7 +79,7 @@ test("methodology explains the actual simulation assumptions", async ({
 test("empty search can be reset and research is keyboard accessible", async ({
   page,
 }) => {
-  await page.goto("/demo");
+  await page.goto("/demo#research");
   await page.getByRole("searchbox").fill("no-matching-market");
   await expect(page.getByText("No matching research")).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
@@ -81,16 +87,20 @@ test("empty search can be reset and research is keyboard accessible", async ({
   const card = page.locator(".research-card-trigger").first();
   await card.focus();
   await page.keyboard.press("Enter");
-  await expect(card).toHaveAttribute("aria-expanded", "true");
-  await expect(card.getByText("Close analysis")).toBeVisible();
-  await page.keyboard.press("Enter");
-  await expect(card).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Close market detail" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(card).toBeFocused();
 });
 
 test("position cards separate stake, gross return and profit", async ({
   page,
 }) => {
   await page.goto("/demo");
+  await page.locator(".market-title").first().click();
   const card = page.locator(".position-card").first();
   await expect(card.getByText("$447.16", { exact: true })).toBeVisible();
   await expect(card.getByText("$1,000.00", { exact: true })).toBeVisible();
@@ -104,7 +114,9 @@ test("position cards separate stake, gross return and profit", async ({
   ).toBeVisible();
   await card.getByText("Original research record", { exact: true }).click();
   await expect(card.locator("pre")).toContainText("DEMO-INFLATION");
+  await page.getByRole("button", { name: "Close market detail" }).click();
   await page.getByRole("button", { name: "Settled 1", exact: true }).click();
+  await page.locator(".market-title").first().click();
   await expect(
     page.locator(".position-card").getByText("Won", { exact: true }),
   ).toBeVisible();
@@ -125,6 +137,7 @@ test("schedule shows local timezone with UTC toggle without fetching demo market
     if (r.url().includes("/api/positions/")) requests.push(r.url());
   });
   await page.goto("http://127.0.0.1:3000/demo");
+  await page.locator(".market-title").first().click();
   const timing = page.locator(".position-timing").first();
   await expect(timing.locator(".timing-primary")).toContainText("PDT");
   await expect(
@@ -138,4 +151,71 @@ test("schedule shows local timezone with UTC toggle without fetching demo market
   await expect(timing).toContainText("Oct 25, 2026, 2:00 PM UTC");
   expect(requests).toEqual([]);
   await context.close();
+});
+
+test("opportunities, category filters and activity links open recorded research", async ({
+  page,
+}) => {
+  await page.goto("/demo");
+  await page.getByRole("button", { name: "Find opportunities" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Find the next opportunity" }),
+  ).toBeVisible();
+  await expect(page.locator(".opportunity-card")).toHaveCount(3);
+  await page.getByRole("button", { name: "Economics", exact: true }).click();
+  await expect(page.locator(".opportunity-card")).toHaveCount(1);
+  await page.getByRole("searchbox").fill("does-not-exist");
+  await expect(page.getByText("No matching opportunities")).toBeVisible();
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(page.locator(".opportunity-card")).toHaveCount(3);
+  await page.getByRole("button", { name: "View research" }).first().click();
+  await expect(page.getByRole("dialog")).toContainText("The counterargument");
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Activity", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Decision history" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "View research" }).first().click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Original research record",
+  );
+});
+
+test("dialog traps focus, restores scrolling, and supports browser navigation", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/demo#research");
+  const trigger = page.locator(".research-card-trigger").first();
+  await trigger.click();
+  const close = page.getByRole("button", { name: "Close market detail" });
+  await expect(close).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  expect(
+    await page
+      .getByRole("dialog")
+      .evaluate((dialog) => dialog.contains(document.activeElement)),
+  ).toBe(true);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe(
+    "hidden",
+  );
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe(
+    "hidden",
+  );
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "Activity", exact: true })
+    .click();
+  await page.goBack();
+  await expect(
+    page.getByRole("heading", { name: "Research journal", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".research-card")).toHaveCount(4);
+  expect(errors).toEqual([]);
 });

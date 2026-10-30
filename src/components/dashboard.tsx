@@ -1,259 +1,36 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ResearchText } from "./research-text";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  DashboardData,
+  DashboardPosition,
+  DashboardResearch,
+} from "@/lib/dashboard-types";
+import { portfolioValues } from "@/lib/dashboard-display";
+import {
+  date,
+  DetailDialog,
+  EmptyState,
+  Icon,
+  money,
+  percent,
+  signedMoney,
+} from "./dashboard-ui";
 import { PositionCard } from "./position-card";
-import type { DashboardData, DashboardResearch } from "@/lib/dashboard-types";
+import { PositionTable } from "./position-table";
+import { PortfolioOverview } from "./portfolio-overview";
+import { decisionLabel, ResearchCard, ResearchPanel } from "./research-panel";
 
-type IconName =
-  | "grid"
-  | "research"
-  | "positions"
-  | "activity"
-  | "arrow"
-  | "chevron"
-  | "search"
-  | "external"
-  | "shield"
-  | "check"
-  | "clock";
-function Icon({
-  name,
-  className = "",
-}: {
-  name: IconName;
-  className?: string;
-}) {
-  const paths: Record<IconName, React.ReactNode> = {
-    grid: (
-      <>
-        <rect x="3" y="3" width="7" height="7" rx="1.5" />
-        <rect x="14" y="3" width="7" height="7" rx="1.5" />
-        <rect x="3" y="14" width="7" height="7" rx="1.5" />
-        <rect x="14" y="14" width="7" height="7" rx="1.5" />
-      </>
-    ),
-    research: (
-      <>
-        <path d="M4 19.5V5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1 0-4h13M8 7h7M8 11h5" />
-      </>
-    ),
-    positions: (
-      <>
-        <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
-      </>
-    ),
-    activity: (
-      <>
-        <path d="M2 12h5l3-8 4 16 3-8h5" />
-      </>
-    ),
-    arrow: (
-      <>
-        <path d="M5 12h14m-6-6 6 6-6 6" />
-      </>
-    ),
-    chevron: <path d="m6 9 6 6 6-6" />,
-    search: (
-      <>
-        <circle cx="10.5" cy="10.5" r="6.5" />
-        <path d="m16 16 5 5" />
-      </>
-    ),
-    external: (
-      <>
-        <path d="M14 3h7v7m0-7L10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" />
-      </>
-    ),
-    shield: (
-      <>
-        <path d="m12 3 8 3v5c0 5-8 10-8 10S4 16 4 11V6l8-3Z" />
-        <path d="m8.5 11.5 2.5 2.5 4.5-5" />
-      </>
-    ),
-    check: <path d="m5 12 4 4L19 6" />,
-    clock: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </>
-    ),
-  };
-  return (
-    <svg
-      className={`icon ${className}`}
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name]}
-    </svg>
-  );
-}
-
-const money = (cents: number, decimals = 0) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(cents / 100);
-const signedMoney = (cents: number) =>
-  `${cents > 0 ? "+" : ""}${money(cents, 2)}`;
-const percent = (value: number) => `${Math.round(value * 100)}%`;
-function date(value: string | null, withTime = false) {
-  if (!value) return "Not yet recorded";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Unavailable";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    ...(withTime
-      ? { hour: "numeric", minute: "2-digit", timeZoneName: "short" as const }
-      : {}),
-    timeZone: "UTC",
-  }).format(parsed);
-}
-function safeSource(url: string) {
-  try {
-    const parsed = new URL(url);
-    return ["https:", "http:"].includes(parsed.protocol) ? parsed.href : null;
-  } catch {
-    return null;
-  }
-}
-
-function ResearchCard({
-  item,
-  expanded,
-  onToggle,
-}: {
-  item: DashboardResearch;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const detailId = `research-${item.id}`;
-  return (
-    <article className={`research-card ${expanded ? "is-expanded" : ""}`}>
-      <button
-        className="research-card-trigger"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-controls={detailId}
-      >
-        <div className="research-market">
-          <div className="market-meta">
-            <span>{item.category || "Uncategorized"}</span>
-            <span className="meta-dot">·</span>
-            <span>{date(item.createdAt)}</span>
-          </div>
-          <h3>{item.title}</h3>
-        </div>
-        <div className="research-probability">
-          <span className="eyebrow">Estimated {item.side}</span>
-          <strong>{percent(item.probability)}</strong>
-          <span className="probability-range">
-            {percent(item.probabilityLow)}–{percent(item.probabilityHigh)} range
-          </span>
-        </div>
-        <div className="research-decision">
-          <span className={`decision-badge ${item.decision}`}>
-            {item.decision === "trade"
-              ? "Trade thesis"
-              : item.decision === "watch"
-                ? "Watching"
-                : "Passed"}
-          </span>
-          <span className="research-open-text">
-            {expanded ? "Close analysis" : "Read analysis"}
-          </span>
-        </div>
-        <Icon name="chevron" className="expand-chevron" />
-      </button>
-      {expanded && (
-        <div className="research-detail" id={detailId}>
-          <div className="detail-column thesis-column">
-            <span className="eyebrow">The case</span>
-            <ResearchText text={item.thesis} />
-          </div>
-          <div className="detail-column">
-            <span className="eyebrow">The counterargument</span>
-            <ResearchText text={item.counterThesis} />
-          </div>
-          <div className="detail-column">
-            <span className="eyebrow">Sizing & review conditions</span>
-            <ResearchText text={item.rationale} />
-          </div>
-          <div className="detail-column">
-            <span className="eyebrow">Settlement criteria</span>
-            <ResearchText text={item.resolutionCriteria} />
-          </div>
-          <div className="detail-sources">
-            <span className="eyebrow">Sources & evidence</span>
-            <div className="source-list">
-              {item.sources.map((source, index) => {
-                const href = safeSource(source.url);
-                return href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    key={`${source.url}-${index}`}
-                  >
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    {source.title}
-                    <Icon name="external" />
-                  </a>
-                ) : (
-                  <span className="invalid-source" key={index}>
-                    {source.title} (link unavailable)
-                  </span>
-                );
-              })}
-            </div>
-            <p className="evidence-time">
-              Evidence as of {date(item.evidenceAsOf, true)}. Range reflects
-              uncertainty in the selected-side estimate.
-            </p>
-            <details className="technical-details">
-              <summary>Original research record</summary>
-              <pre>{JSON.stringify(item, null, 2)}</pre>
-            </details>
-          </div>
-        </div>
-      )}
-    </article>
-  );
-}
-
-function EmptyState({
-  icon,
-  title,
-  children,
-}: {
-  icon: IconName;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="empty-state">
-      <div className="empty-icon">
-        <Icon name={icon} />
-      </div>
-      <h3>{title}</h3>
-      <div className="empty-description">{children}</div>
-    </div>
-  );
-}
+type View = "overview" | "opportunities" | "research" | "activity";
+const viewTitles: Record<View, string> = {
+  overview: "Portfolio overview",
+  opportunities: "Find the next opportunity",
+  research: "Research journal",
+  activity: "Every decision, recorded",
+};
 
 export default function Dashboard({ data }: { data: DashboardData }) {
+  const [view, setView] = useState<View>("overview");
   const [researchFilter, setResearchFilter] = useState<
     "all" | "trade" | "watch" | "pass"
   >("all");
@@ -261,31 +38,73 @@ export default function Dashboard({ data }: { data: DashboardData }) {
     "open",
   );
   const [search, setSearch] = useState("");
-  const [expandedResearch, setExpandedResearch] = useState<string | null>(null);
-  const research = useMemo(
+  const [opportunitySearch, setOpportunitySearch] = useState("");
+  const [category, setCategory] = useState("All markets");
+  const [selectedResearch, setSelectedResearch] =
+    useState<DashboardResearch | null>(null);
+  const [selectedPosition, setSelectedPosition] =
+    useState<DashboardPosition | null>(null);
+  useEffect(() => {
+    const syncView = () => {
+      const hash = window.location.hash.slice(1);
+      setView(
+        hash === "positions"
+          ? "overview"
+          : hash === "markets"
+            ? "opportunities"
+            : Object.hasOwn(viewTitles, hash)
+              ? (hash as View)
+              : "overview",
+      );
+    };
+    syncView();
+    window.addEventListener("hashchange", syncView);
+    return () => window.removeEventListener("hashchange", syncView);
+  }, []);
+  function navigate(next: View) {
+    setView(next);
+    window.location.hash = next;
+  }
+  const allResearch = useMemo(
     () =>
-      [...data.research]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .filter(
-          (item) =>
-            (researchFilter === "all" || item.decision === researchFilter) &&
-            `${item.title} ${item.ticker} ${item.category}`
-              .toLowerCase()
-              .includes(search.toLowerCase()),
-        ),
-    [data.research, researchFilter, search],
+      [...data.research].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [data.research],
+  );
+  const research = allResearch.filter(
+    (r) =>
+      (researchFilter === "all" || r.decision === researchFilter) &&
+      `${r.title} ${r.ticker} ${r.category}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+  );
+  const shortlist = useMemo(() => {
+    const latest = new Map<string, DashboardResearch>();
+    for (const r of allResearch) {
+      const key = `${r.ticker}:${r.side}`;
+      if (!latest.has(key)) latest.set(key, r);
+    }
+    return [...latest.values()].filter((r) => r.decision !== "pass");
+  }, [allResearch]);
+  const categories = [
+    "All markets",
+    ...new Set(shortlist.map((r) => r.category || "Uncategorized")),
+  ];
+  const opportunities = shortlist.filter(
+    (r) =>
+      (category === "All markets" ||
+        (r.category || "Uncategorized") === category) &&
+      `${r.title} ${r.ticker} ${r.category}`
+        .toLowerCase()
+        .includes(opportunitySearch.toLowerCase()),
   );
   const positions = [...data.positions]
-    .filter((position) => position.status === positionFilter)
+    .filter((p) => p.status === positionFilter)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const values = portfolioValues(data);
   const unavailable = data.mode === "unavailable";
   const unconfigured = data.mode === "unconfigured";
   const demo = data.mode === "demo";
-  const researchCounts = {
-    trade: data.research.filter((item) => item.decision === "trade").length,
-    watch: data.research.filter((item) => item.decision === "watch").length,
-    pass: data.research.filter((item) => item.decision === "pass").length,
-  };
+  const pending = unavailable || unconfigured;
   const modeLabel = demo
     ? "Illustrative demo"
     : unavailable
@@ -294,300 +113,441 @@ export default function Dashboard({ data }: { data: DashboardData }) {
         ? "Awaiting setup"
         : data.mode === "local"
           ? "Local paper ledger"
-          : "Paper ledger";
+          : "Paper trading";
+  const researchCounts = {
+    trade: data.research.filter((r) => r.decision === "trade").length,
+    watch: data.research.filter((r) => r.decision === "watch").length,
+    pass: data.research.filter((r) => r.decision === "pass").length,
+  };
+  const marks = data.positions
+    .filter((p) => p.status === "open" && p.markAsOf)
+    .map((p) => p.markAsOf!)
+    .sort();
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <aside className="sidebar">
+      <header className="site-header">
         <a
           href="/"
           className="brand"
           aria-label="Blue prediction research home"
         >
-          <span className="brand-symbol">
-            <i />
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>
-            BLUE<span className="brand-period">.</span>
-          </span>
+          <span className="brandmark">b.</span>BLUE
+          <span className="brand-sub">prediction lab</span>
         </a>
-        <nav aria-label="Main navigation">
-          <a className="nav-link" href="#overview" aria-label="Overview">
-            <Icon name="grid" />
-            <span>Overview</span>
-          </a>
-          <a
-            className="nav-link"
-            href="#research"
-            aria-label="Research journal"
-          >
-            <Icon name="research" />
-            <span>Research</span>
-            <span className="nav-count">{data.research.length}</span>
-          </a>
-          <a
-            className="nav-link"
-            href="#positions"
-            aria-label="Paper positions"
-          >
-            <Icon name="positions" />
-            <span>Positions</span>
-            <span className="nav-count">{data.openPositions}</span>
-          </a>
-          <a className="nav-link" href="#activity" aria-label="Activity log">
-            <Icon name="activity" />
-            <span>Activity</span>
-          </a>
-        </nav>
-        <div className="sidebar-bottom">
-          <a className="sidebar-demo-link" href={demo ? "/" : "/demo"}>
-            {demo ? "Back to portfolio" : "View demo"}
-            <Icon name="arrow" />
-          </a>
-          <div className="sidebar-author">
-            <span className="author-avatar">MV</span>
-            <div>
-              Matt Vildibill<span>Personal research project</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span>BLUE</span>
-            <span>/</span>Kalshi paper trading
-          </div>
-          <div className="topbar-status">
-            <span
-              className={`status-dot ${unavailable || unconfigured ? "is-pending" : ""}`}
-            />
-            <span>{modeLabel}</span>
-            <span className="paper-tag">Paper only</span>
-          </div>
-        </header>
-        <main id="main">
-          {demo && (
-            <div className="mode-banner demo-banner">
-              <div>
-                <strong>Illustrative preview</strong>
-                <span>
-                  All research, positions, and results on this page are sample
-                  data. No real paper trades were placed.
-                </span>
-              </div>
-              <a href="/">
-                View actual portfolio <Icon name="arrow" />
+        <nav className="main-nav" aria-label="Main navigation">
+          {(["overview", "opportunities", "research", "activity"] as const).map(
+            (v) => (
+              <a
+                key={v}
+                href={`#${v}`}
+                onClick={() => setView(v)}
+                className={view === v ? "active" : ""}
+                aria-current={view === v ? "page" : undefined}
+              >
+                {v === "overview"
+                  ? "Overview"
+                  : v === "opportunities"
+                    ? "Opportunities"
+                    : v === "research"
+                      ? "Research"
+                      : "Activity"}
+                {v === "opportunities" && (
+                  <span className="nav-count">{shortlist.length}</span>
+                )}
               </a>
-            </div>
+            ),
           )}
-          {unconfigured && (
-            <div className="mode-banner setup-banner">
-              <div>
-                <strong>Portfolio not connected</strong>
-                <span>
-                  The starting balance is shown below. Portfolio history is
-                  unavailable until storage is connected.
-                </span>
-              </div>
-              <span className="banner-label">Not connected</span>
-            </div>
-          )}
-          {unavailable && (
-            <div className="mode-banner unavailable-banner" role="status">
-              <div>
-                <strong>Portfolio data is temporarily unavailable.</strong>
-                <span>
-                  Balances and activity are hidden until the ledger can be read.
-                </span>
-              </div>
-            </div>
-          )}
-          {data.mode === "local" && (
-            <div className="mode-banner local-banner">
-              <div>
-                <strong>Local development ledger</strong>
-                <span>
-                  This portfolio belongs to this development environment. It is
-                  separate from the deployed portfolio.
-                </span>
-              </div>
-            </div>
-          )}
+        </nav>
+        <div className="header-status">
+          <span className={`status-dot ${pending ? "is-pending" : ""}`} />
+          <span>{modeLabel}</span>
+          <span className="paper-tag">Paper only</span>
+        </div>
+      </header>
 
-          <section
-            className="page-heading"
-            id="overview"
-            aria-labelledby="portfolio-title"
-          >
-            <h1 id="portfolio-title">Portfolio</h1>
-            <a href={demo ? "/" : "/demo"}>
-              {demo ? "Back to portfolio" : "View demo"} <Icon name="arrow" />
+      <main id="main" className="dashboard-main">
+        {demo && (
+          <div className="mode-banner demo-banner">
+            <div>
+              <strong>Illustrative preview</strong>
+              <span>
+                All research, positions, and results here are fictional. No real
+                paper trades were placed.
+              </span>
+            </div>
+            <a href="/">
+              View actual portfolio <Icon name="arrow" />
             </a>
-          </section>
-          <div className="portfolio-freshness">
-            <Icon name="clock" />
-            {data.run && !demo && (
-              <span>Started {date(data.run.startedAt, true)}</span>
-            )}
-            <span>
-              Last settlement check:{" "}
+          </div>
+        )}
+        {unconfigured && (
+          <div className="mode-banner setup-banner">
+            <div>
+              <strong>Portfolio not connected</strong>
+              <span>
+                The initial paper allocation is shown. Connect storage to view
+                actual balances and history.
+              </span>
+            </div>
+            <span>Awaiting setup</span>
+          </div>
+        )}
+        {unavailable && (
+          <div className="mode-banner unavailable-banner" role="status">
+            <div>
+              <strong>Portfolio data is temporarily unavailable.</strong>
+              <span>
+                Balances and activity are hidden until the ledger can be read.
+              </span>
+            </div>
+          </div>
+        )}
+        {data.mode === "local" && (
+          <div className="mode-banner local-banner">
+            <div>
+              <strong>Local development ledger</strong>
+              <span>
+                This environment’s portfolio is separate from the deployed
+                portfolio.
+              </span>
+            </div>
+          </div>
+        )}
+
+        <section className="page-heading" aria-labelledby="page-title">
+          <div>
+            <div className="eyebrow">
+              The {money(data.initialCashCents, 0)} experiment
+              {data.run && (
+                <>
+                  <span className="eyebrow-divider">/</span>Started{" "}
+                  {date(data.run.startedAt)}
+                </>
+              )}
+            </div>
+            <h1 id="page-title">{viewTitles[view]}</h1>
+          </div>
+          <div className="heading-actions">
+            <span className="updated">
+              Settlement check ·{" "}
               {unavailable ? "Unavailable" : date(data.lastSyncAt, true)}
             </span>
+            {view === "overview" && (
+              <button
+                type="button"
+                className="button primary-button"
+                onClick={() => navigate("opportunities")}
+              >
+                Find opportunities <Icon name="arrow" />
+              </button>
+            )}
           </div>
+        </section>
 
-          <section className="metrics-grid" aria-label="Portfolio summary">
-            <div className="metric-card primary-metric">
-              <div className="metric-top">
-                <span className="eyebrow">
-                  {unconfigured
-                    ? "Starting paper cash"
-                    : "Available paper cash"}
-                </span>
-                <span className="metric-currency">USD</span>
-              </div>
-              <strong className="metric-value">
-                {unavailable ? "—" : money(data.cashCents, 2)}
-              </strong>
-              <span className="metric-caption">
-                {unconfigured
-                  ? "Initial allocation · ledger pending"
-                  : "Available for paper trades"}
+        <section className="metrics-grid" aria-label="Portfolio summary">
+          <div className="metric">
+            <span className="label">Portfolio value</span>
+            <strong>
+              {values.totalValue === null ? "—" : money(values.totalValue)}
+            </strong>
+            <small>
+              {pending
+                ? "Awaiting portfolio data"
+                : values.missingMarks
+                  ? `${values.missingMarks} ${values.missingMarks === 1 ? "fill needs" : "fills need"} a recorded bid`
+                  : "Cash + positions at recorded bids"}
+            </small>
+          </div>
+          <div className="metric">
+            <span className="label">Total profit</span>
+            <strong
+              className={
+                values.totalProfit !== null && values.totalProfit > 0
+                  ? "positive"
+                  : values.totalProfit !== null && values.totalProfit < 0
+                    ? "negative"
+                    : ""
+              }
+            >
+              {values.totalProfit === null
+                ? "—"
+                : signedMoney(values.totalProfit)}
+            </strong>
+            <small>
+              {pending
+                ? "Awaiting portfolio data"
+                : `Realized ${signedMoney(data.realizedProfitCents)} · after fees`}
+            </small>
+          </div>
+          <div className="metric">
+            <span className="label">
+              Open positions{" "}
+              <span className="quiet-count">
+                {pending ? "—" : data.openPositions}
               </span>
-            </div>
-            <div className="metric-card">
-              <div className="metric-top">
-                <span className="eyebrow">Open position cost</span>
-                <Icon name="positions" />
-              </div>
-              <strong className="metric-value">
-                {unavailable
-                  ? "—"
-                  : money(
-                      data.committedCents,
-                      data.committedCents % 100 ? 2 : 0,
-                    )}
-              </strong>
-              <span className="metric-caption">
-                {unavailable
-                  ? "Awaiting portfolio data"
-                  : `${data.openPositions} open ${data.openPositions === 1 ? "position" : "positions"} · includes entry fees`}
-              </span>
-            </div>
-            <div className="metric-card">
-              <div className="metric-top">
-                <span className="eyebrow">Realized return</span>
-                <Icon name="activity" />
-              </div>
-              <strong
-                className={`metric-value ${data.realizedProfitCents > 0 ? "positive" : data.realizedProfitCents < 0 ? "negative" : ""}`}
-              >
-                {unavailable ? "—" : signedMoney(data.realizedProfitCents)}
-              </strong>
-              <span className="metric-caption">
-                {unavailable
-                  ? "Awaiting portfolio data"
-                  : `${data.settledPositions} settled ${data.settledPositions === 1 ? "position" : "positions"} · after estimated fees`}
-              </span>
-            </div>
-          </section>
+            </span>
+            <strong>
+              {values.openValue === null ? "—" : money(values.openValue)}
+            </strong>
+            <small>
+              {pending
+                ? "Awaiting portfolio data"
+                : `${money(data.committedCents)} invested · fees included`}
+            </small>
+          </div>
+          <div className="metric">
+            <span className="label">
+              {unconfigured ? "Starting paper cash" : "Available cash"}
+            </span>
+            <strong>{unavailable ? "—" : money(data.cashCents)}</strong>
+            <small>
+              {unconfigured
+                ? "Initial allocation · ledger pending"
+                : "Available for paper trades"}
+            </small>
+          </div>
+        </section>
+        <div className="portfolio-freshness">
+          <Icon name="clock" />
+          <span>
+            {marks.length
+              ? `Recorded bids · ${date(marks[0], true)}${marks[0] !== marks.at(-1) ? ` – ${date(marks.at(-1), true)}` : ""}`
+              : "Market values appear when bids are recorded."}{" "}
+            Updated during reviews.
+          </span>
+        </div>
 
-          <section
-            className="positions-section"
-            id="positions"
-            aria-labelledby="positions-title"
-          >
-            <div className="section-heading">
-              <div>
-                <h2 id="positions-title">Paper positions</h2>
-              </div>
-              <div
-                className="position-tabs"
-                role="group"
-                aria-label="Filter positions by status"
-              >
-                <button
-                  onClick={() => setPositionFilter("open")}
-                  aria-pressed={positionFilter === "open"}
-                  className={positionFilter === "open" ? "active" : ""}
+        {view === "overview" && (
+          <>
+            <PortfolioOverview
+              data={data}
+              shortlist={shortlist}
+              onResearch={setSelectedResearch}
+              onOpportunities={() => navigate("opportunities")}
+            />
+            <section
+              className="positions-section"
+              id="positions"
+              aria-labelledby="positions-title"
+            >
+              <div className="section-heading">
+                <div className="section-title">
+                  <h2 id="positions-title">My bets</h2>
+                  <span>
+                    {pending
+                      ? "Unavailable"
+                      : `${data.openPositions} open · ${data.settledPositions} settled`}
+                  </span>
+                </div>
+                <div
+                  className="segments position-tabs"
+                  role="group"
+                  aria-label="Filter positions by status"
                 >
-                  Open <span>{data.openPositions}</span>
-                </button>
-                <button
-                  onClick={() => setPositionFilter("settled")}
-                  aria-pressed={positionFilter === "settled"}
-                  className={positionFilter === "settled" ? "active" : ""}
-                >
-                  Settled <span>{data.settledPositions}</span>
-                </button>
-              </div>
-            </div>
-            <div className="positions-panel">
-              {positions.length ? (
-                <div className="position-grid">
-                  {positions.map((position) => (
-                    <PositionCard
-                      key={`${data.run?.id ?? "initial-run"}:${position.id}`}
-                      position={position}
-                      runId={data.run?.id}
-                      demo={demo}
-                      research={data.research.find(
-                        (r) =>
-                          r.id === position.researchId &&
-                          r.ticker === position.ticker &&
-                          r.side === position.side,
-                      )}
-                      initialCashCents={data.initialCashCents}
-                    />
+                  {(["open", "settled"] as const).map((status) => (
+                    <button
+                      type="button"
+                      key={status}
+                      onClick={() => setPositionFilter(status)}
+                      aria-pressed={positionFilter === status}
+                    >
+                      {status === "open" ? "Open" : "Settled"}{" "}
+                      <span>
+                        {status === "open"
+                          ? data.openPositions
+                          : data.settledPositions}
+                      </span>
+                    </button>
                   ))}
                 </div>
-              ) : (
-                <EmptyState
-                  icon="positions"
-                  title={
-                    unavailable
-                      ? "Positions are currently unavailable"
+              </div>
+              <div className="panel positions-panel">
+                {positions.length ? (
+                  <PositionTable
+                    positions={positions}
+                    data={data}
+                    onSelect={setSelectedPosition}
+                  />
+                ) : (
+                  <EmptyState
+                    title={
+                      unavailable
+                        ? "Positions are currently unavailable"
+                        : positionFilter === "open"
+                          ? "No open positions"
+                          : "No settled positions"
+                    }
+                  >
+                    {unavailable
+                      ? "Position history returns when the ledger connection is restored."
                       : positionFilter === "open"
-                        ? "No open positions"
-                        : "No settled positions"
-                  }
-                >
-                  {unavailable
-                    ? "Position history will return when the ledger connection is restored."
-                    : positionFilter === "open"
-                      ? "Accepted paper trades will appear here."
-                      : "Positions move here after official settlement."}
-                </EmptyState>
-              )}
-              <div className="positions-footnote">
+                        ? "Accepted paper trades will appear here."
+                        : "Positions move here after official settlement."}
+                  </EmptyState>
+                )}
+                <div className="table-footer">
+                  <span>
+                    Expected results are estimates. Open a market for close and
+                    settlement times.
+                  </span>
+                  <span>
+                    {positionFilter === "settled"
+                      ? "Realized profit "
+                      : "Open profit "}
+                    <strong
+                      className={
+                        (positionFilter === "settled"
+                          ? data.realizedProfitCents
+                          : (values.openProfit ?? 0)) < 0
+                          ? "negative"
+                          : "positive"
+                      }
+                    >
+                      {pending
+                        ? "—"
+                        : positionFilter === "settled"
+                          ? signedMoney(data.realizedProfitCents)
+                          : values.openProfit === null
+                            ? "—"
+                            : signedMoney(values.openProfit)}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+              <p className="section-note">
                 <Icon name="shield" />
+                Paper only. Each row is one fill. Bid valuations are snapshots,
+                not cash-out offers; future exit fees are excluded.
+              </p>
+            </section>
+          </>
+        )}
+
+        {view === "opportunities" && (
+          <section id="opportunities" aria-labelledby="opportunities-title">
+            <div className="research-toolbar">
+              <div
+                className="filter-tabs"
+                role="group"
+                aria-label="Market category"
+              >
+                {categories.map((c) => (
+                  <button
+                    type="button"
+                    key={c}
+                    aria-pressed={category === c}
+                    onClick={() => setCategory(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <label className="search-field">
+                <Icon name="search" />
+                <input
+                  type="search"
+                  aria-label="Search opportunities"
+                  placeholder="Search opportunities"
+                  value={opportunitySearch}
+                  onChange={(e) => setOpportunitySearch(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="section-heading">
+              <div className="section-title">
+                <h2 id="opportunities-title">Research shortlist</h2>
                 <span>
-                  Paper trades only. Cost includes modeled fees; open cost is
-                  not market value.
+                  {opportunities.length}{" "}
+                  {opportunities.length === 1 ? "market" : "markets"}
                 </span>
               </div>
+              <span className="updated">Latest published decisions</span>
             </div>
+            <div className="opportunity-list">
+              {opportunities.length ? (
+                opportunities.map((r) => (
+                  <article key={r.id} className="opportunity-card">
+                    <div>
+                      <div className="market-meta">
+                        <span>{r.category || "Uncategorized"}</span>
+                        <span className={`decision-badge ${r.decision}`}>
+                          {decisionLabel(r)}
+                        </span>
+                      </div>
+                      <h3>{r.title}</h3>
+                      <p className="research-excerpt">{r.thesis}</p>
+                    </div>
+                    <div>
+                      <div className="opportunity-numbers">
+                        <span className={`side-badge ${r.side}`}>{r.side}</span>
+                        <strong>{percent(r.probability)}</strong>
+                        <span>our estimate</span>
+                      </div>
+                      <p className="muted">
+                        {percent(r.probabilityLow)}–{percent(r.probabilityHigh)}{" "}
+                        uncertainty range
+                      </p>
+                    </div>
+                    <div className="opportunity-action">
+                      <span className="muted">
+                        Evidence {date(r.evidenceAsOf)}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-button"
+                        aria-haspopup="dialog"
+                        onClick={() => setSelectedResearch(r)}
+                      >
+                        View research <Icon name="arrow" />
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <EmptyState
+                  title={
+                    shortlist.length
+                      ? "No matching opportunities"
+                      : "No shortlisted markets"
+                  }
+                >
+                  {shortlist.length ? (
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        setCategory("All markets");
+                        setOpportunitySearch("");
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  ) : (
+                    "Published trade theses and watch decisions appear here."
+                  )}
+                </EmptyState>
+              )}
+            </div>
+            <p className="section-note">
+              Research estimates are dated forecasts. A trade thesis is a
+              recommendation; a fresh quote and accepted paper fill are recorded
+              separately.
+            </p>
           </section>
+        )}
 
-          <section
-            className="journal-section"
-            id="research"
-            aria-labelledby="research-title"
-          >
+        {view === "research" && (
+          <section id="research" aria-labelledby="research-title">
             <div className="section-heading">
-              <div>
-                <h2 id="research-title">
-                  Research journal
-                  <span className="heading-count">{data.research.length}</span>
-                </h2>
+              <div className="section-title">
+                <h2 id="research-title">Evidence behind every decision</h2>
+                <span>{data.research.length} published briefs</span>
               </div>
+              <span className="updated">Original forecasts stay on record</span>
             </div>
             <div className="research-toolbar">
               <div
@@ -597,8 +557,8 @@ export default function Dashboard({ data }: { data: DashboardData }) {
               >
                 {(["all", "trade", "watch", "pass"] as const).map((filter) => (
                   <button
+                    type="button"
                     key={filter}
-                    className={researchFilter === filter ? "active" : ""}
                     onClick={() => setResearchFilter(filter)}
                     aria-pressed={researchFilter === filter}
                   >
@@ -608,7 +568,7 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                         ? "Trade theses"
                         : filter === "watch"
                           ? "Watching"
-                          : "Passed"}
+                          : "Passed"}{" "}
                     <span>
                       {filter === "all"
                         ? data.research.length
@@ -621,10 +581,10 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                 <Icon name="search" />
                 <input
                   type="search"
+                  aria-label="Search research markets"
                   placeholder="Find a market…"
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  aria-label="Search research markets"
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </label>
             </div>
@@ -634,124 +594,170 @@ export default function Dashboard({ data }: { data: DashboardData }) {
                   <ResearchCard
                     key={item.id}
                     item={item}
-                    expanded={expandedResearch === item.id}
-                    onToggle={() =>
-                      setExpandedResearch(
-                        expandedResearch === item.id ? null : item.id,
-                      )
-                    }
+                    onOpen={() => setSelectedResearch(item)}
                   />
                 ))
               ) : (
                 <EmptyState
-                  icon="research"
                   title={
-                    data.research.length
-                      ? "No matching research"
-                      : unavailable
-                        ? "Research is currently unavailable"
+                    unavailable
+                      ? "Research is currently unavailable"
+                      : data.research.length
+                        ? "No matching research"
                         : "No research yet"
                   }
                 >
-                  {data.research.length
-                    ? "Try another decision filter or search term."
-                    : unavailable
-                      ? "The journal will return when the ledger connection is restored."
-                      : "Completed reviews will appear here."}
-                  {data.research.length > 0 && (
-                    <button
-                      className="clear-filters"
-                      onClick={() => {
-                        setSearch("");
-                        setResearchFilter("all");
-                      }}
-                    >
-                      Clear filters
-                    </button>
+                  {data.research.length ? (
+                    <>
+                      <p>Try another decision filter or search term.</p>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          setSearch("");
+                          setResearchFilter("all");
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    </>
+                  ) : (
+                    "Completed reviews appear here when published to the ledger."
                   )}
                 </EmptyState>
               )}
             </div>
           </section>
+        )}
 
-          <div className="bottom-grid">
-            <section
-              className="activity-panel panel"
-              id="activity"
-              aria-labelledby="activity-title"
-            >
-              <div className="activity-heading">
-                <h2 id="activity-title">Latest activity</h2>
-                <Icon name="activity" />
+        {view === "activity" && (
+          <section id="activity" aria-labelledby="activity-title">
+            <div className="section-heading">
+              <div className="section-title">
+                <h2 id="activity-title">Decision history</h2>
+                <span>Research, fills, and results</span>
               </div>
+              <a className="text-button" href="/api/ledger">
+                Full ledger <Icon name="arrow" />
+              </a>
+            </div>
+            <div className="panel">
               {data.activity.length ? (
                 <ol className="activity-list">
                   {[...data.activity]
                     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                    .slice(0, 6)
-                    .map((item) => (
-                      <li key={item.id}>
-                        <span className="activity-node" />
-                        <div>
-                          <span className="activity-type">
-                            {item.type.replaceAll("_", " ")}
-                          </span>
-                          <p>{item.description}</p>
+                    .map((item) => {
+                      const brief = data.research.find((r) => r.id === item.id);
+                      return (
+                        <li key={item.id}>
                           <time dateTime={item.createdAt}>
                             {date(item.createdAt, true)}
                           </time>
-                        </div>
-                      </li>
-                    ))}
+                          <span className="research-icon">
+                            <Icon
+                              name={
+                                item.type === "research"
+                                  ? "research"
+                                  : item.type === "settlement"
+                                    ? "check"
+                                    : "activity"
+                              }
+                            />
+                          </span>
+                          <div>
+                            <span className="activity-type">
+                              {item.type.replaceAll("_", " ")}
+                            </span>
+                            <p>{item.description}</p>
+                          </div>
+                          {brief && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => setSelectedResearch(brief)}
+                              aria-haspopup="dialog"
+                            >
+                              View research <Icon name="arrow" />
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
                 </ol>
               ) : (
-                <div className="activity-empty">
-                  <span className="activity-node" />
-                  <div>
-                    <strong>
-                      {unavailable ? "Activity unavailable" : "No activity yet"}
-                    </strong>
-                    <p>
-                      {unavailable
-                        ? "Waiting for the ledger connection."
-                        : "Research, trades, and settlements appear here."}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <div className="last-update">
-                <Icon name="clock" />
-                <div>
-                  <span>Last ledger activity</span>
-                  <strong>{date(data.lastActivityAt, true)}</strong>
-                </div>
-              </div>
-            </section>
-          </div>
-          <footer className="footer">
-            <div>
-              <span className="footer-brand">BLUE.</span>
-              <span>
-                By{" "}
-                <a
-                  href="https://mattvildibill.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <EmptyState
+                  title={
+                    unavailable ? "Activity unavailable" : "No activity yet"
+                  }
                 >
-                  Matt Vildibill
-                  <Icon name="external" />
-                </a>
-              </span>
+                  Research, trades, and settlements appear here.
+                </EmptyState>
+              )}
             </div>
-            <p>
-              <a href="/methodology">How it works</a> ·{" "}
-              <a href="/api/ledger">View the ledger</a>
-              <br />
-              Paper trading only. Not affiliated with Kalshi.
+            <p className="section-note">
+              Latest {data.activity.length} ledger events · Last activity{" "}
+              {date(data.lastActivityAt, true)}
             </p>
-          </footer>
-        </main>
-      </div>
+          </section>
+        )}
+
+        <footer className="footer">
+          <span>
+            <strong>BLUE</strong>
+            <span className="footer-divider">/</span>Real markets. Imaginary
+            money.
+            <span className="footer-author">
+              By{" "}
+              <a
+                href="https://mattvildibill.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Matt Vildibill
+              </a>
+            </span>
+          </span>
+          <div>
+            <a href="/methodology">How it works</a>
+            <a href="/api/ledger">View the ledger</a>
+            <a href={demo ? "/" : "/demo"}>
+              {demo ? "Actual portfolio" : "View demo"}
+            </a>
+          </div>
+          <span className="footer-note">
+            Paper trading only · Not affiliated with Kalshi
+          </span>
+        </footer>
+      </main>
+      {selectedResearch && (
+        <ResearchPanel
+          item={selectedResearch}
+          onClose={() => setSelectedResearch(null)}
+        />
+      )}
+      {selectedPosition && (
+        <DetailDialog
+          titleId="position-detail-title"
+          label="Paper position / Recorded fill"
+          onClose={() => setSelectedPosition(null)}
+        >
+          <h2 className="sr-only" id="position-detail-title">
+            {selectedPosition.title}
+          </h2>
+          <PositionCard
+            position={selectedPosition}
+            runId={data.run?.id}
+            demo={demo}
+            research={data.research.find(
+              (r) =>
+                r.id === selectedPosition.researchId &&
+                r.ticker === selectedPosition.ticker &&
+                r.side === selectedPosition.side,
+            )}
+            initialCashCents={data.initialCashCents}
+          />
+        </DetailDialog>
+      )}
     </div>
   );
 }

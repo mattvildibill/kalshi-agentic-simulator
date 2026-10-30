@@ -66,7 +66,12 @@ export default function Methodology() {
       </p>
       <p>
         The dashboard separates cash, open position cost, and realized profit.
-        Open cost is not market value. Price observations are updated when Blue
+        Portfolio value adds cash to open contracts valued at their selected
+        side’s last recorded bid. Total profit includes unrealized changes and
+        entry fees, and excludes future exit fees. If any open bid is missing,
+        the portfolio total stays unavailable. Open cost is not market value.
+        The performance chart uses settled profit only; historical portfolio
+        valuations are not inferred. Price observations are updated when Blue
         runs a review; there is no continuous live feed. A settlement check
         happens only when Blue invokes synchronization, so displayed results may
         lag the exchange.
