@@ -68,6 +68,13 @@ export function projectDashboard(
               : _quote;
           return {
             ...t,
+            // Valuations use only recorded bids, never purchase asks or inferred prices.
+            markPriceCents:
+              t.status === "open" && mark
+                ? ((t.side === "yes" ? mark.yesBidCents : mark.noBidCents) ??
+                  null)
+                : null,
+            markAsOf: t.status === "open" ? (mark?.observedAt ?? null) : null,
             marketTiming: observedQuote.marketTiming
               ? newerTiming(
                   snapshot.marketTimings?.[t.ticker],

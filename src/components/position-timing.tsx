@@ -45,7 +45,7 @@ export function formatSchedule(
       }).format(new Date(value))
     : "Not supplied by Kalshi";
 }
-export function PositionTiming({
+function usePositionSchedule({
   position: p,
   demo = false,
   runId,
@@ -96,6 +96,60 @@ export function PositionTiming({
       active = false;
     };
   }, [p.ticker, p.marketTiming, demo, runId]);
+  return { timing, error, timezone, localZone, stale, loading, setTimezone };
+}
+
+export function PositionResultDate(props: {
+  position: DashboardPosition;
+  demo?: boolean;
+  runId?: string;
+}) {
+  const { timing, timezone, stale, loading, error } =
+    usePositionSchedule(props);
+  const value =
+    props.position.status === "settled"
+      ? props.position.settledAt
+      : timing?.expectedResultAt;
+  const valid = value && Number.isFinite(Date.parse(value));
+  return valid ? (
+    <span
+      className="result-date"
+      title={`${formatSchedule(value, timezone)}${stale ? " · recorded schedule may be stale" : ""}${error ? " · refresh unavailable" : ""}`}
+    >
+      <time dateTime={value}>
+        {new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: timezone,
+        }).format(new Date(value))}
+      </time>
+      <span>
+        {new Intl.DateTimeFormat("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          timeZoneName: "short",
+          timeZone: timezone,
+        }).format(new Date(value))}
+      </span>
+      {props.position.status === "open" && (
+        <small>{stale ? "Estimate · stale" : "Estimate"}</small>
+      )}
+    </span>
+  ) : (
+    <span className="muted">
+      {loading ? "Checking schedule…" : "Not supplied"}
+    </span>
+  );
+}
+
+export function PositionTiming(props: {
+  position: DashboardPosition;
+  demo?: boolean;
+  runId?: string;
+}) {
+  const { position: p, demo = false } = props;
+  const { timing, error, timezone, localZone, stale, loading, setTimezone } =
+    usePositionSchedule(props);
   const format = (value?: string | null) => formatSchedule(value, timezone);
   const validDate = (value?: string | null) =>
     Boolean(value && Number.isFinite(Date.parse(value)));

@@ -34,6 +34,8 @@ export type DashboardPosition = {
   settledAt: string | null;
   closesAt?: string | null;
   timingAsOf?: string | null;
+  markPriceCents?: number | null;
+  markAsOf?: string | null;
   marketTiming?: MarketTiming;
   settlementResult?: "yes" | "no" | "scalar" | null;
 };
