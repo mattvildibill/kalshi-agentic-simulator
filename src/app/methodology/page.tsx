@@ -84,26 +84,42 @@ export default function Methodology() {
       </p>
       <h2>Reviewing results</h2>
       <p>
-        Blue’s deployed research policy calls for contract-specific sources, an
-        independent challenge when available, and central and low-case
-        expected-value checks after costs. By default, a nonpositive low-case
-        estimate leads to watch or pass. This uncertainty gate is a research
-        instruction; the engine independently enforces positive central expected
-        value and its hard caps.
+        Blue pursues positive expected paper profit over a 180-day experiment.
+        Research records distinguish the raw forecast, an allowance for model
+        error, and the decision probability submitted for expected-value checks.
+        Blue verifies contract-specific sources and seeks independent challenge.
+        Both central and low-case expected value are calculated after costs.
+        These estimates depend on the research assumptions and do not guarantee
+        a profitable outcome.
       </p>
       <p>
-        Before calibration evidence exists, the policy starts with 0.25% of
-        starting capital per thesis and permits up to 1% only with strong
-        evidence. It recommends at most 25% total open cost and 10% per
-        correlated theme. These operating budgets are instructions for Blue; the
-        server’s separate 10% market/event ceilings are not allocation targets.
-        They do not guarantee returns.
+        Established picks require stronger evidence and positive low-case value,
+        starting with a $250 cumulative thesis ceiling and permitting up to
+        $1,000 with stronger support. Exploratory picks test a credible,
+        unvalidated method with a specific learning question. They may have
+        negative low-case value, but must have positive expected value at the
+        decision probability. Their cumulative cost is limited to $100 per
+        thesis within a shared $1,000 pilot budget, including fees. Settlements
+        do not replenish that pilot. Missing essential evidence or unclear rules
+        still block a purchase. There is no minimum spending target.
       </p>
       <p>
-        Profit alone is noisy. Review probability calibration, research quality,
-        correlated exposure, and how prices moved after a forecast. Keep
-        original forecasts intact and publish new dated briefs when evidence
-        changes. Small samples do not establish forecasting skill.
+        Existing holdings count toward the recommended 25% total open-cost and
+        10% correlated-theme budgets. Allocation classes, thesis ceilings and
+        pilot accounting are instructions for Blue, recorded in research
+        narratives and checked against the ledger. The engine independently
+        enforces positive central expected value and its 10% market/event caps;
+        those caps are not allocation targets.
+      </p>
+      <p>
+        Profit alone is noisy. Evaluate forecasts for researched trades, watches
+        and passes, along with calibration, correlated exposure and later price
+        observations when available. Include archived lessons while keeping run
+        balances separate. These evaluations currently require manual research;
+        automatic watch/pass scoring and later-price collection are not built
+        into the app. Keep original forecasts intact and publish new dated
+        briefs when evidence changes. Small samples do not establish forecasting
+        skill.
       </p>
       <p>
         <Link href="/demo">View demo →</Link>
