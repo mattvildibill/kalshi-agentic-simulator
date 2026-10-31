@@ -155,9 +155,23 @@ describe("authenticated research and trade boundary", () => {
     const result = await instructions(request("/api/blue/instructions"));
     expect(result.status).toBe(200);
     const body = await result.json();
-    expect(body.version).toBe("2026-10-29.2");
+    expect(body.version).toBe("2026-10-31.1");
     expect(body.playbook).toContain("RESEARCH_SUPERSEDED");
     expect(body.strategy).toContain("lowCaseEVcents");
+    // The served contract must retain actionable sizing, honest uncertainty,
+    // transition accounting and loss controls together, not just a new version.
+    for (const requirement of [
+      "$25,000 total open cost",
+      "$10,000 new purchase cost in any rolling 24 hours",
+      "Brakes latch once reached",
+      "Learning bet: true edge uncertain",
+      "no refund, retroactive promotion",
+      "Neither requires a validated model",
+      "Independent challenge is mandatory",
+    ])
+      expect(body.strategy).toContain(requirement);
+    expect(body.playbook).toContain("Allocation: central-EV|learning");
+    expect(body.playbook).not.toContain("$100 cumulative thesis ceiling");
     expect(body.sha256).toBe(
       createHash("sha256")
         .update(
