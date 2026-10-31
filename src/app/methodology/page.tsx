@@ -85,31 +85,38 @@ export default function Methodology() {
       <h2>Reviewing results</h2>
       <p>
         Blue pursues positive expected paper profit over a 180-day experiment.
-        Research records distinguish the raw forecast, an allowance for model
-        error, and the decision probability submitted for expected-value checks.
-        Blue verifies contract-specific sources and seeks independent challenge.
-        Both central and low-case expected value are calculated after costs.
-        These estimates depend on the research assumptions and do not guarantee
-        a profitable outcome.
+        Research records state a reasoned central probability and evidence-based
+        stress scenarios. Subjective estimates without validated models are
+        allowed. Uncertainty generally reduces size rather than vetoing a
+        purchase. Contract rules, essential dated evidence, fresh executable
+        quotes and independent challenge remain mandatory. No estimate
+        guarantees a profitable outcome.
       </p>
       <p>
-        Established picks require stronger evidence and positive low-case value,
-        starting with a $250 cumulative thesis ceiling and permitting up to
-        $1,000 with stronger support. Exploratory picks test a credible,
-        unvalidated method with a specific learning question. They may have
-        negative low-case value, but must have positive expected value at the
-        decision probability. Their cumulative cost is limited to $100 per
-        thesis within a shared $1,000 pilot budget, including fees. Settlements
-        do not replenish that pilot. Missing essential evidence or unclear rules
-        still block a purchase. There is no minimum spending target.
+        Central-EV positions normally start at $1,000 with a $2,500 cumulative
+        thesis ceiling. Learning bets normally start at $500 with a $1,000
+        thesis ceiling and explicitly disclose uncertain true edge. Both require
+        positive central expected value after fees and slippage; negative
+        low-case value is allowed. Positive central value does not establish
+        positive uncertainty-adjusted value. There is no spending quota.
       </p>
       <p>
-        Existing holdings count toward the recommended 25% total open-cost and
-        10% correlated-theme budgets. Allocation classes, thesis ceilings and
-        pilot accounting are instructions for Blue, recorded in research
-        narratives and checked against the ledger. The engine independently
-        enforces positive central expected value and its 10% market/event caps;
-        those caps are not allocation targets.
+        Policy 2026-10-31.1 retires the old lifetime pilot for future purchases;
+        historical classifications and costs remain intact. Limits including
+        fees are $25,000 total open cost, $10,000 per correlated theme, $7,500
+        per method, $10,000 open learning exposure and $10,000 new purchases per
+        rolling 24 hours. Legacy holdings count. Active-run realized losses of
+        $10,000, a $10,000 decline from the realized profit high-water mark, or
+        $2,500 realized losses within one method pause new purchases in the
+        affected scope pending review and a user decision. Open positions remain
+        held to settlement.
+      </p>
+      <p>
+        These are Blue operating controls checked against the ledger, not
+        additional backend guarantees. The engine independently enforces
+        positive central expected value, fresh quotes and its 10% market/event
+        caps. Reviews occur every 20 newly resolved questions or 30 days; small
+        samples do not prove skill.
       </p>
       <p>
         Profit alone is noisy. Evaluate forecasts for researched trades, watches
